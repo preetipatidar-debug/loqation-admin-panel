@@ -1,0 +1,27 @@
+/* src/custom.css */
+
+/* This fixes the Google Autocomplete dropdown being hidden behind the modal */
+.pac-container {
+  z-index: 10000 !important; /* Higher than Bootstrap modal (1050) */
+  border-radius: 8px;
+  margin-top: 5px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  border: 1px solid #eee;
+  background-color: #fff;
+}
+
+.pac-item {
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pac-item:hover {
+  background-color: #f0f5ff;
+}
+.gm-style-mtc, .gmnoprint.gm-bundled-control-on-bottom {
+  display: block;
+}
+.gmnoprint[style*="z-index: 0"] {
+  display: none !important;
+}

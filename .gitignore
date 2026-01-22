@@ -1,0 +1,5 @@
+.env
+server/.env
+server/app.yaml
+node_modules/
+dist/
