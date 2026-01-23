@@ -11,21 +11,21 @@ const SignInPage = () => {
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
   const handleCallbackResponse = async (response) => {
-    try {
-      const res = await api.post('/auth/google-signin', {
-        credential: response.credential
-      });
+    // response.credential is the string from Google
+    if (!response.credential) return;
 
-      if (res.data.success) {
-        login(res.data.user, res.data.token);
-        toast.success(`Welcome back!`);
-        navigate('/dashboard');
-      }
+    try {
+        // Single point of entry: AuthContext handles everything
+        const success = await login(response.credential); 
+
+        if (success) {
+            toast.success("Welcome back!");
+            navigate('/dashboard');
+        }
     } catch (err) {
-      console.error("Google Auth Error:", err.response?.data || err.message);
-      toast.error("Google Sign-In failed.");
+        toast.error("Sign-In failed. Please try again.");
     }
-  };
+};
 
   useEffect(() => {
     /* global google */

@@ -25,3 +25,14 @@
 .gmnoprint[style*="z-index: 0"] {
   display: none !important;
 }
+/* Hide the duplicate/native Google Maps drawing toolbar */
+.gmnoprint[style*="z-index: 0"], 
+.gmnoprint[style*="z-index: 1"],
+.gm-style-mtc {
+    display: none !important;
+}
+
+/* Ensure our specific DrawingManager at the top center remains visible */
+.gmnoprint .gm-draw {
+    display: block !important;
+}

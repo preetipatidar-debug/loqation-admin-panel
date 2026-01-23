@@ -13,8 +13,14 @@ const client = new OAuth2Client(process.env.REACT_APP_GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'your_local_jwt_secret';
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+    next();
+});
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(express.json());
 
 // ==========================================
 // AUTH MIDDLEWARE
@@ -36,11 +42,6 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-app.use((req, res, next) => {
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none"); // Ensure embedder policy doesn't conflict
-    next();
-  });
 
 // --- SERVE STATIC FRONTEND ---
 const buildPath = path.join(__dirname, '../build');
@@ -52,74 +53,77 @@ const formatDate = (value) => {
     if (!value) return null;
     return String(value).split('T')[0];
 };
-// Simple Test Route
-app.get('/api/test', (req, res) => {
-    res.json({ message: "Backend is working on 3001!" });
-  });
+
+// ==========================================
+// 1. AUTH ROUTES (Restricted Whitelist)
+app.post('/api/auth/google-signin', async (req, res) => {
+    const { credential } = req.body;
+    if (!credential || typeof credential !== 'string') {
+        return res.status(400).json({ success: false, message: "Invalid Token" });
+    }
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+
+        // WHITELIST CHECK
+        const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [payload.email]);
+        
+        if (rows.length === 0) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Unauthorized: User not registered in system." 
+            });
+        }
+
+        const user = { 
+            email: payload.email, 
+            name: payload.name, 
+            picture: payload.picture, 
+            role: rows[0].role 
+        };
+
+        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ success: true, token, user });
+    } catch (error) {
+        res.status(401).json({ success: false, message: "Verification failed" });
+    }
+});
+
+// ==========================================
+// 2. USER MANAGEMENT
+// ==========================================
+app.use('/api/users', authenticateToken, require('./routes/userRoutes'));
+
+// ==========================================
+// 3. DASHBOARD & GLOBAL SEARCH
+// ==========================================
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
         const [areas] = await db.query("SELECT COUNT(*) as count FROM top_locations");
         const [businesses] = await db.query("SELECT COUNT(*) as count FROM locations");
         const [units] = await db.query("SELECT COUNT(*) as count FROM sub_locations");
-
-        res.json({
-            totalAreas: areas[0].count,
-            totalBusinesses: businesses[0].count,
-            totalUnits: units[0].count
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        res.json({ totalAreas: areas[0].count, totalBusinesses: businesses[0].count, totalUnits: units[0].count });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// server/index.js
+
 app.get('/api/search/global', authenticateToken, async (req, res) => {
     const query = req.query.q;
-    
-    // Safety: If query is empty, return empty array immediately
     if (!query) return res.json([]);
-
     const term = `%${query}%`;
     try {
         const [areas] = await db.query("SELECT 'Area' as type, name as title, id FROM top_locations WHERE name LIKE ? LIMIT 3", [term]);
         const [biz] = await db.query("SELECT 'Business' as type, location_name as title, id FROM locations WHERE location_name LIKE ? OR city LIKE ? LIMIT 3", [term, term]);
         const [units] = await db.query("SELECT 'Unit' as type, name as title, id FROM sub_locations WHERE name LIKE ? LIMIT 3", [term]);
-        
-        // Combine results into a single flat array
-        const results = [...areas, ...biz, ...units];
-        res.json(results); 
-    } catch (e) { 
-        console.error("Global Search Error:", e.message);
-        // Even on error, return an empty array to prevent frontend crash
-        res.json([]); 
-    }
-});
-// ==========================================
-// 1. AUTH ROUTES
-// ==========================================
-app.post('/api/auth/google-signin', async (req, res) => {
-    const { credential } = req.body;
-    try {
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: process.env.REACT_APP_GOOGLE_CLIENT_ID, 
-        });
-        const payload = ticket.getPayload();
-        const user = {
-            email: payload.email,
-            name: payload.name,
-            picture: payload.picture,
-            googleId: payload.sub
-        };
-        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ success: true, token, user });
-    } catch (error) {
-        console.error('Google Auth Error:', error);
-        res.status(401).json({ success: false, message: 'Invalid Google Token' });
-    }
+        res.json([...areas, ...biz, ...units]); 
+    } catch (e) { res.json([]); }
 });
 
 // ==========================================
-// 2. TOP LOCATIONS (Areas)
+// 4. TOP LOCATIONS (Areas)
 // ==========================================
 app.get('/api/top-locations', authenticateToken, async (req, res) => {
     try {
@@ -140,10 +144,7 @@ app.get('/api/top-locations', authenticateToken, async (req, res) => {
 app.post('/api/top-locations', authenticateToken, async (req, res) => {
     const { name, description, geometrics_outline } = req.body;
     try {
-        await db.execute(
-            "INSERT INTO top_locations (name, description, geometrics_outline) VALUES (?, ?, ?)",
-            [safe(name), safe(description), safe(geometrics_outline)]
-        );
+        await db.execute("INSERT INTO top_locations (name, description, geometrics_outline) VALUES (?, ?, ?)", [safe(name), safe(description), safe(geometrics_outline)]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -151,10 +152,7 @@ app.post('/api/top-locations', authenticateToken, async (req, res) => {
 app.put('/api/top-locations/:id', authenticateToken, async (req, res) => {
     const { name, description, geometrics_outline } = req.body;
     try {
-        await db.execute(
-            "UPDATE top_locations SET name=?, description=?, geometrics_outline=? WHERE id=?",
-            [safe(name), safe(description), safe(geometrics_outline), req.params.id]
-        );
+        await db.execute("UPDATE top_locations SET name=?, description=?, geometrics_outline=? WHERE id=?", [safe(name), safe(description), safe(geometrics_outline), req.params.id]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -167,7 +165,7 @@ app.delete('/api/top-locations/:id', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// 3. MAIN LOCATIONS (Business Profiles)
+// 5. MAIN LOCATIONS (Businesses)
 // ==========================================
 app.get('/api/main-locations', authenticateToken, async (req, res) => {
     try {
@@ -189,14 +187,8 @@ app.get('/api/main-locations', authenticateToken, async (req, res) => {
         let baseQuery = `FROM locations l LEFT JOIN top_locations t ON l.top_location_id = t.id WHERE 1=1`;
         const queryParams = [];
 
-        if (parentId) {
-            baseQuery += ` AND l.top_location_id = ?`;
-            queryParams.push(parentId);
-        }
-        if (search) {
-            baseQuery += ` AND (l.location_name LIKE ? OR l.internal_id LIKE ? OR l.city LIKE ?)`;
-            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-        }
+        if (parentId) { baseQuery += ` AND l.top_location_id = ?`; queryParams.push(parentId); }
+        if (search) { baseQuery += ` AND (l.location_name LIKE ? OR l.internal_id LIKE ? OR l.city LIKE ?)`; queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`); }
 
         const [countRes] = await db.execute(`SELECT COUNT(*) as total ${baseQuery}`, queryParams);
         const total = countRes[0].total;
@@ -208,11 +200,9 @@ app.get('/api/main-locations', authenticateToken, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/locations', authenticateToken, async (req, res) => {
+app.post('/api/locations', authenticateToken, async (req, res) => {
     const data = req.body;
-    if (data.primary_category_id && !data.primary_category_id.startsWith('gcid:')) {
-        data.primary_category_id = 'gcid:' + data.primary_category_id;
-    }
+    if (data.primary_category_id && !data.primary_category_id.startsWith('gcid:')) data.primary_category_id = 'gcid:' + data.primary_category_id;
     const validationErrors = validateLocation(data);
     if (validationErrors.length > 0) return res.status(400).json({ error: "Validation Failed", details: validationErrors });
 
@@ -226,7 +216,7 @@ app.post('/locations', authenticateToken, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/locations/:id', authenticateToken, async (req, res) => {
+app.put('/api/locations/:id', authenticateToken, async (req, res) => {
     const id = req.params.id;
     const data = req.body;
     try {
@@ -240,18 +230,14 @@ app.put('/locations/:id', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// 4. SUB LOCATIONS (ATMs/Depts)
+// 6. SUB LOCATIONS (Units)
 // ==========================================
 app.get('/api/sub-locations', authenticateToken, async (req, res) => {
     try {
         const search = req.query.search || '';
         const params = [];
         let sql = `SELECT s.*, l.location_name as parent_main_name FROM sub_locations s JOIN locations l ON s.main_location_id = l.id`;
-        if (search) {
-            sql += " WHERE s.name LIKE ? OR s.type LIKE ? OR l.location_name LIKE ?";
-            const term = `%${search}%`;
-            params.push(term, term, term);
-        }
+        if (search) { sql += " WHERE s.name LIKE ? OR s.type LIKE ? OR l.location_name LIKE ?"; const term = `%${search}%`; params.push(term, term, term); }
         sql += " ORDER BY s.id DESC";
         const [rows] = await db.query(sql, params);
         res.json(rows);
@@ -265,31 +251,19 @@ app.post('/api/sub-locations', authenticateToken, async (req, res) => {
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
-        for (const item of items) {
-            await connection.execute(
-                "INSERT INTO sub_locations (main_location_id, name, type, description) VALUES (?, ?, ?, ?)",
-                [safe(item.parent_id), safe(item.name), safe(item.type), safe(item.description)]
-            );
-        }
+        for (const item of items) { await connection.execute("INSERT INTO sub_locations (main_location_id, name, type, description) VALUES (?, ?, ?, ?)", [safe(item.parent_id), safe(item.name), safe(item.type), safe(item.description)]); }
         await connection.commit();
         res.json({ success: true, count: items.length });
-    } catch (e) { 
-        await connection.rollback();
-        res.status(500).json({ error: e.message }); 
-    } finally { connection.release(); }
+    } catch (e) { await connection.rollback(); res.status(500).json({ error: e.message }); } finally { connection.release(); }
 });
 
 // ==========================================
-// 5. BULK DISCOVERY & DELETE
+// 7. BULK OPERATIONS & OPTIONS
 // ==========================================
 app.post('/api/bulk-delete', authenticateToken, async (req, res) => {
     const { ids, type } = req.body;
-    let table = '';
-    if (type === 'TOP') table = 'top_locations';
-    else if (type === 'SUB') table = 'sub_locations';
-    else if (type === 'MAIN') table = 'locations';
-    else return res.status(400).json({ error: "Invalid type" });
-
+    let table = type === 'TOP' ? 'top_locations' : type === 'SUB' ? 'sub_locations' : type === 'MAIN' ? 'locations' : '';
+    if (!table) return res.status(400).json({ error: "Invalid type" });
     try {
         const placeholders = ids.map(() => '?').join(',');
         await db.execute(`DELETE FROM ${table} WHERE id IN (${placeholders})`, ids);
@@ -305,58 +279,37 @@ app.post('/api/main-locations/bulk', authenticateToken, async (req, res) => {
         await connection.beginTransaction();
         for (const loc of items) {
             const internalId = loc.internal_id || `DISC-${Date.now()}-${Math.floor(Math.random()*1000)}`;
-            await connection.execute(
-                `INSERT INTO locations (top_location_id, internal_id, location_name, street_address, city, lat, lng, google_place_id, ownership, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
-                [safe(loc.top_location_id), safe(internalId), safe(loc.location_name), safe(loc.vicinity), safe(loc.city), safe(loc.lat), safe(loc.lng), safe(loc.place_id), safe(loc.ownership || 'CLIENT')]
-            );
+            await connection.execute(`INSERT INTO locations (top_location_id, internal_id, location_name, street_address, city, lat, lng, google_place_id, ownership, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`, [safe(loc.top_location_id), safe(internalId), safe(loc.location_name), safe(loc.vicinity), safe(loc.city), safe(loc.lat), safe(loc.lng), safe(loc.place_id), safe(loc.ownership || 'CLIENT')]);
         }
         await connection.commit();
         res.json({ success: true, count: items.length });
-    } catch (e) {
-        await connection.rollback();
-        res.status(500).json({ error: e.message });
-    } finally { connection.release(); }
+    } catch (e) { await connection.rollback(); res.status(500).json({ error: e.message }); } finally { connection.release(); }
 });
 
-// ==========================================
-// 6. OPTIONS & UTILS
-// ==========================================
 app.get('/api/options/top-locations', authenticateToken, async (req, res) => {
     const [rows] = await db.query("SELECT id, name FROM top_locations ORDER BY name ASC");
     res.json(rows);
 });
 
 app.get('/api/options/main-locations', authenticateToken, async (req, res) => {
-    const sql = `SELECT l.id, l.location_name as name, l.lat, l.lng, t.geometrics_outline FROM locations l LEFT JOIN top_locations t ON l.top_location_id = t.id ORDER BY l.location_name ASC`;
-    const [rows] = await db.query(sql);
+    const [rows] = await db.query(`SELECT l.id, l.location_name as name, l.lat, l.lng, t.geometrics_outline FROM locations l LEFT JOIN top_locations t ON l.top_location_id = t.id ORDER BY l.location_name ASC`);
     res.json(rows);
 });
 
 app.get('/api/options/google-types', async (req, res) => {
     try {
-        const sql = "SELECT type_key, label, category_group FROM google_place_types ORDER BY category_group ASC, label ASC";
-        const [rows] = await db.query(sql);
-        if (rows.length === 0) {
-            return res.json([
-                { type_key: 'atm', label: 'ATM', category_group: 'Service' },
-                { type_key: 'restaurant', label: 'Restaurant', category_group: 'Food' }
-            ]);
-        }
-        res.json(rows);
+        const [rows] = await db.query("SELECT type_key, label, category_group FROM google_place_types ORDER BY category_group ASC, label ASC");
+        res.json(rows.length > 0 ? rows : [{ type_key: 'atm', label: 'ATM', category_group: 'Service' }]);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ==========================================
+// 8. CATCH-ALL & SERVE
+// ==========================================
 app.get('*', (req, res) => {
-    res.status(200).send("LoQation API is Running. Access via Port 3000 Dashboard.");
-});
-
-// Serve static files from the React build folder
-app.use(express.static(path.join(__dirname, '../build')));
-
-// Route all non-API requests to React's index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build', 'index.html'));
+    if (req.url.startsWith('/api/')) return res.status(404).json({ error: "API Route Not Found" });
+    res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 const PORT = process.env.SERVER_PORT || 3001; 
-app.listen(PORT, () => console.log(`🚀 Backend running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));

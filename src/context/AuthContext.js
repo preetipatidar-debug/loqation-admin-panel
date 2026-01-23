@@ -1,33 +1,45 @@
-import React, { createContext, useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    // Check if user/token exists in localStorage to persist session
-    const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user')));
-    const [token, setToken] = useState(() => localStorage.getItem('token'));
-    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const login = (userData, tokenData) => {
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', tokenData);
-        setUser(userData);
-        setToken(tokenData);
-        navigate('/locations-top'); // Redirect after successful Google login
+    useEffect(() => {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) setUser(JSON.parse(savedUser));
+        setLoading(false);
+    }, []);
+
+    const login = async (credential) => {
+        try {
+            const res = await api.post('/auth/google-signin', { credential });
+            const { token, user: userData } = res.data;
+
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // Sync Axios headers immediately
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
+            setUser(userData);
+            return true;
+        } catch (err) {
+            console.error("Login Error", err);
+            return false;
+        }
     };
 
     const logout = () => {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        localStorage.clear();
         setUser(null);
-        setToken(null);
-        navigate('/signin');
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout }}>
-            {children}
+        <AuthContext.Provider value={{ user, login, logout, loading }}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

@@ -1,19 +1,21 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+
 import { useAuth } from '../context/AuthContext';
+import MasterLayout from '../masterLayout/MasterLayout';
 
 const ProtectedRoute = ({ children }) => {
-    const { user, token } = useAuth();
-    const location = useLocation();
+  const { user, loading } = useAuth();
+  const token = localStorage.getItem('token');
 
-    // If no user or token exists, redirect to signin
-    if (!user || !token) {
-        // We save the 'from' location so we can redirect them back after login
-        return <Navigate to="/signin" state={{ from: location }} replace />;
-    }
+  if (loading) return null; // Wait for the AuthContext to initialize
 
-    // If they are logged in, show the requested page
-    return children;
+  // If there's no user in state and no token in storage, kick them to sign-in
+  if (!user && !token) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  // KEY FIX: This is the ONLY place MasterLayout should be called
+  return <MasterLayout>{children}</MasterLayout>;
 };
 
 export default ProtectedRoute;
