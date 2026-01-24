@@ -2,160 +2,195 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import ThemeToggleButton from "../helper/ThemeToggleButton";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { useAuth } from "../context/AuthContext"; // Use your Auth context
 
 const MasterLayout = ({ children }) => {
-  const { user, logout } = useAuth();
+  let [sidebarActive, seSidebarActive] = useState(false);
+  let [mobileMenu, setMobileMenu] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarActive, setSidebarActive] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
+  const { user, logout } = useAuth(); // Get user and logout function
 
-  // --- Search Logic ---
-  const handleSearch = async (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+  // Sidebar Dropdown Logic (Original Theme Logic)
+  useEffect(() => {
+    const handleDropdownClick = (event) => {
+      event.preventDefault();
+      const clickedLink = event.currentTarget;
+      const clickedDropdown = clickedLink.closest(".dropdown");
+      if (!clickedDropdown) return;
+      const isActive = clickedDropdown.classList.contains("open");
 
-    if (value.length > 2) {
-      try {
-        const res = await api.get(`/api/search/global?q=${value}`);
-        setSearchResults(Array.isArray(res.data) ? res.data : []);
-      } catch (err) {
-        setSearchResults([]);
+      const allDropdowns = document.querySelectorAll(".sidebar-menu .dropdown");
+      allDropdowns.forEach((dropdown) => {
+        dropdown.classList.remove("open");
+        const submenu = dropdown.querySelector(".sidebar-submenu");
+        if (submenu) submenu.style.maxHeight = "0px";
+      });
+
+      if (!isActive) {
+        clickedDropdown.classList.add("open");
+        const submenu = clickedDropdown.querySelector(".sidebar-submenu");
+        if (submenu) submenu.style.maxHeight = `${submenu.scrollHeight}px`;
       }
-    } else {
-      setSearchResults([]);
-    }
+    };
+
+    const dropdownTriggers = document.querySelectorAll(".sidebar-menu .dropdown > a");
+    dropdownTriggers.forEach((trigger) => trigger.addEventListener("click", handleDropdownClick));
+
+    return () => {
+      dropdownTriggers.forEach((trigger) => trigger.removeEventListener("click", handleDropdownClick));
+    };
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/signin');
   };
 
-  const handleSearchResultClick = (result) => {
-    setSearchResults([]);
-    setSearchTerm("");
-    const type = result.type.toLowerCase();
-    if (type === 'area') navigate('/locations-top');
-    else if (type === 'unit') navigate('/locations-sub');
-    else navigate('/locations-main');
-  };
+  let sidebarControl = () => seSidebarActive(!sidebarActive);
+  let mobileMenuControl = () => setMobileMenu(!mobileMenu);
 
   return (
-    <section className={mobileMenu ? "overlay active" : "overlay"}>
-      {/* Sidebar Section */}
-      <aside className={`sidebar ${sidebarActive ? "active" : ""} ${mobileMenu ? "sidebar-open" : ""}`}>
-        <button onClick={() => setMobileMenu(false)} className="sidebar-close-btn">
-          <Icon icon="radix-icons:cross-2" />
+    <section className={mobileMenu ? "overlay active" : "overlay "}>
+      {/* sidebar */}
+      <aside className={sidebarActive ? "sidebar active " : mobileMenu ? "sidebar sidebar-open" : "sidebar"}>
+        <button onClick={mobileMenuControl} type='button' className='sidebar-close-btn'>
+          <Icon icon='radix-icons:cross-2' />
         </button>
-
-        <div className="sidebar-header p-24">
-          <Link to="/" className="sidebar-logo d-flex align-items-center gap-2">
-            <Icon icon="solar:map-point-bold-duotone" className="text-primary-600" style={{ fontSize: '32px' }} />
-            <h4 className="mb-0 fw-bold" style={{ color: 'var(--neutral-700)' }}>LoQation</h4>
+        <div>
+          <Link to='/' className='sidebar-logo'>
+            <img src='assets/images/logo.png' alt='site logo' className='light-logo' />
+            <img src='assets/images/logo-light.png' alt='site logo' className='dark-logo' />
+            <img src='assets/images/logo-icon.png' alt='site logo' className='logo-icon' />
           </Link>
         </div>
+        
+        <div className='sidebar-menu-area'>
+  <ul className='sidebar-menu' id='sidebar-menu'>
+    
+    {/* DASHBOARD GROUP */}
+    <li className='sidebar-menu-group-title text-uppercase'>Dashboard</li>
+    <li>
+      <NavLink 
+        to='/' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:widget-6-outline' className='menu-icon' />
+        <span>Overview</span>
+      </NavLink>
+    </li>
 
-        <div className="sidebar-menu-area">
-          <ul className="sidebar-menu">
-            <li className="sidebar-menu-group-title">DASHBOARD</li>
-            <li>
-              <NavLink to="/" className={({ isActive }) => isActive ? "active-page" : ""}>
-                <Icon icon="solar:widget-add-line-duotone" className="menu-icon" />
-                <span>Overview</span>
-              </NavLink>
-            </li>
+    {/* LOCATION MANAGEMENT GROUP */}
+    <li className='sidebar-menu-group-title text-uppercase'>Location Management</li>
+    <li>
+      <NavLink 
+        to='/locations-top' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:map-point-wave-outline' className='menu-icon' />
+        <span>Top Locations</span>
+      </NavLink>
+    </li>
+    <li>
+      <NavLink 
+        to='/locations-main' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:city-outline' className='menu-icon' />
+        <span>Main Locations</span>
+      </NavLink>
+    </li>
+    <li>
+      <NavLink 
+        to='/locations-sub' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:map-point-outline' className='menu-icon' />
+        <span>Sub Locations</span>
+      </NavLink>
+    </li>
 
-            <li className="sidebar-menu-group-title">LOCATION MANAGEMENT</li>
-            {/* Top Locations - Fixed Icon */}
-            <li>
-              <NavLink to="/locations-top" className={({ isActive }) => isActive ? "active-page" : ""}>
-                <Icon icon="solar:map-bold-duotone" className="menu-icon" />
-                <span>Top Locations</span>
-              </NavLink>
-            </li>
-            {/* Main Locations */}
-            <li>
-              <NavLink to="/locations-main" className={({ isActive }) => isActive ? "active-page" : ""}>
-                <Icon icon="solar:city-bold-duotone" className="menu-icon" />
-                <span>Main Locations</span>
-              </NavLink>
-            </li>
-            {/* Sub Locations */}
-            <li>
-              <NavLink to="/locations-sub" className={({ isActive }) => isActive ? "active-page" : ""}>
-                <Icon icon="solar:map-point-bold-duotone" className="menu-icon" />
-                <span>Sub Locations</span>
-              </NavLink>
-            </li>
-          </ul>
-        </div>
+    {/* ADMIN GROUP */}
+    <li className='sidebar-menu-group-title text-uppercase'>Admin</li>
+    <li>
+      <NavLink 
+        to='/users' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:users-group-two-rounded-outline' className='menu-icon' />
+        <span>Manage Users</span>
+      </NavLink>
+    </li>
+
+  </ul>
+</div>
       </aside>
 
-      <main className={`dashboard-main ${sidebarActive ? "active" : ""}`}>
-        <div className="navbar-header p-16 bg-base border-bottom">
-          <div className="row align-items-center justify-content-between">
-            <div className="col-auto d-flex align-items-center gap-4">
-              <button onClick={() => setSidebarActive(!sidebarActive)} className="sidebar-toggle">
-                <Icon icon={sidebarActive ? 'iconoir:arrow-right' : 'heroicons:bars-3-solid'} className="icon text-2xl" />
-              </button>
-              
-              <div className="position-relative d-none d-lg-block">
-                <form className="navbar-search" onSubmit={(e) => e.preventDefault()}>
-                  <input
-                    type="text"
-                    placeholder="Search locations..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="form-control radius-8 ps-40"
-                    style={{ width: '300px' }}
-                  />
-                  <Icon icon="ion:search-outline" className="position-absolute start-0 top-50 translate-middle-y ms-12 text-secondary" />
-                </form>
-
-                {Array.isArray(searchResults) && searchResults.length > 0 && (
-                  <div className="dropdown-menu show position-absolute w-100 shadow-lg mt-2 radius-8 border-0 p-8" style={{ zIndex: 1000 }}>
-                    {searchResults.map((result, i) => (
-                      <button
-                        key={i}
-                        className="dropdown-item radius-4 p-8 d-flex justify-content-between align-items-center"
-                        onClick={() => handleSearchResultClick(result)}
-                      >
-                        <span className="fw-medium text-sm">{result.title}</span>
-                        <span className="badge bg-primary-50 text-primary-600 text-xs">{result.type}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+      <main className={sidebarActive ? "dashboard-main active" : "dashboard-main"}>
+        <div className='navbar-header'>
+          <div className='row align-items-center justify-content-between'>
+            <div className='col-auto'>
+              <div className='d-flex flex-wrap align-items-center gap-4'>
+                <button type='button' className='sidebar-toggle' onClick={sidebarControl}>
+                  <Icon icon={sidebarActive ? 'iconoir:arrow-right' : 'heroicons:bars-3-solid'} className='icon text-2xl non-active' />
+                </button>
+                <button onClick={mobileMenuControl} type='button' className='sidebar-mobile-toggle'>
+                  <Icon icon='heroicons:bars-3-solid' className='icon' />
+                </button>
               </div>
             </div>
-
-            <div className="col-auto d-flex align-items-center gap-3">
-              <ThemeToggleButton />
-              
-              <div className="dropdown">
-                <button className="d-flex align-items-center gap-2 border-0 bg-transparent" type="button" data-bs-toggle="dropdown">
-                  <img src={user?.picture || 'assets/images/user.png'} alt="user" className="w-40-px h-40-px rounded-circle border" />
-                  <div className="text-start d-none d-sm-block">
-                    <p className="mb-0 text-sm fw-bold line-height-1">{user?.name || 'Admin'}</p>
-                    <p className="mb-0 text-xs text-secondary-light">{user?.email}</p>
-                  </div>
-                </button>
-                <div className="dropdown-menu dropdown-menu-end shadow-sm border-0 radius-8">
-                  <Link className="dropdown-item px-16 py-8 text-sm d-flex align-items-center gap-2" to="/profile">
-                    <Icon icon="solar:user-linear" /> My Profile
-                  </Link>
-                  <hr className="dropdown-divider" />
-                  <button onClick={logout} className="dropdown-item px-16 py-8 text-sm text-danger d-flex align-items-center gap-2">
-                    <Icon icon="lucide:power" /> Log Out
+            
+            <div className='col-auto'>
+              <div className='d-flex flex-wrap align-items-center gap-3'>
+                <ThemeToggleButton />
+                
+                {/* UPDATED PROFILE DROPDOWN */}
+                <div className='dropdown'>
+                  <button className='d-flex justify-content-center align-items-center rounded-circle' type='button' data-bs-toggle='dropdown'>
+                    <img
+                      src={user?.picture || 'assets/images/user.png'}
+                      alt='user'
+                      className='w-40-px h-40-px object-fit-cover rounded-circle border'
+                    />
                   </button>
+                  <div className='dropdown-menu to-top dropdown-menu-sm'>
+                    <div className='py-12 px-16 radius-8 bg-primary-50 mb-16 d-flex align-items-center justify-content-between gap-2'>
+                      <div>
+                        <h6 className='text-lg text-primary-light fw-semibold mb-0'>{user?.name || 'User'}</h6>
+                        <span className='text-secondary-light fw-medium text-sm text-capitalize'>{user?.role || 'Guest'}</span>
+                      </div>
+                    </div>
+                    <ul className='to-top-list'>
+                      <li>
+                        <Link className='dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3' to='/view-profile'>
+                          <Icon icon='solar:user-linear' className='icon text-xl' /> My Profile
+                        </Link>
+                      </li>
+                      <li>
+                        <button 
+                          className='dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-danger d-flex align-items-center gap-3 w-100 border-0 bg-transparent' 
+                          onClick={handleLogout}
+                        >
+                          <Icon icon='lucide:power' className='icon text-xl' /> Log Out
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="dashboard-main-body p-24">
-          {children}
-        </div>
+        <div className='dashboard-main-body'>{children}</div>
+
+        <footer className='d-footer'>
+          <div className='row align-items-center justify-content-between'>
+            <div className='col-auto'>
+              <p className='mb-0'>© 2026 Loqation.ai. All Rights Reserved.</p>
+            </div>
+          </div>
+        </footer>
       </main>
     </section>
   );

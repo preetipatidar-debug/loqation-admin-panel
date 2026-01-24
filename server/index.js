@@ -1,8 +1,8 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const db = require('./db');
 const { syncLocationToGoogle } = require('./googleService');
 const { validateLocation } = require('./validator');
@@ -11,7 +11,7 @@ const jwt = require('jsonwebtoken');
 
 const client = new OAuth2Client(process.env.REACT_APP_GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'your_local_jwt_secret';
-
+//const JWT_SECRET = 'wowdash_secret_key_2026';
 const app = express();
 
 app.use((req, res, next) => {
@@ -58,6 +58,7 @@ const formatDate = (value) => {
 // 1. AUTH ROUTES (Restricted Whitelist)
 app.post('/api/auth/google-signin', async (req, res) => {
     const { credential } = req.body;
+    
     if (!credential || typeof credential !== 'string') {
         return res.status(400).json({ success: false, message: "Invalid Token" });
     }
@@ -80,13 +81,24 @@ app.post('/api/auth/google-signin', async (req, res) => {
         }
 
         const user = { 
+            id: rows[0].id,
             email: payload.email, 
             name: payload.name, 
             picture: payload.picture, 
             role: rows[0].role 
         };
-
+        try {
+            await db.execute(
+                'UPDATE users SET last_login = NOW() WHERE id = ?',
+                [user.id]
+            );
+            console.log(`Updated last_login for user: ${user.email}`);
+        } catch (updateErr) {
+            console.error("Failed to update last login:", updateErr);
+            // We don't block login if this fails, but we log it
+        }
         const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+        
         res.json({ success: true, token, user });
     } catch (error) {
         res.status(401).json({ success: false, message: "Verification failed" });

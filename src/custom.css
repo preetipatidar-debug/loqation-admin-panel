@@ -1,38 +1,46 @@
 /* src/custom.css */
 
-/* This fixes the Google Autocomplete dropdown being hidden behind the modal */
+/* Fix for Autocomplete as before */
 .pac-container {
-  z-index: 10000 !important; /* Higher than Bootstrap modal (1050) */
-  border-radius: 8px;
-  margin-top: 5px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  border: 1px solid #eee;
-  background-color: #fff;
+  z-index: 10000 !important;
 }
 
-.pac-item {
-  padding: 10px 15px;
-  font-size: 14px;
-  cursor: pointer;
+/* --- NEW: FORCE DRAWING TOOLS VISIBLE --- */
+
+/* Google uses .gmnoprint for the toolbar container */
+.gmnoprint, .gm-draw {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
-.pac-item:hover {
-  background-color: #f0f5ff;
+/* This ensures the toolbar sits on top of the Bootstrap Modal */
+.gm-style-mtc + .gmnoprint, 
+div[style*="z-index: 1000001"] {
+    z-index: 1000001 !important; 
 }
-.gm-style-mtc, .gmnoprint.gm-bundled-control-on-bottom {
-  display: block;
-}
-.gmnoprint[style*="z-index: 0"] {
-  display: none !important;
-}
-/* Hide the duplicate/native Google Maps drawing toolbar */
-.gmnoprint[style*="z-index: 0"], 
-.gmnoprint[style*="z-index: 1"],
+
+/* Hide only the 'Map/Satellite' buttons to keep it clean */
 .gm-style-mtc {
     display: none !important;
 }
+/* GOOGLE MAP DRAWING TOOL FIX FOR BOOTSTRAP MODAL */
 
-/* Ensure our specific DrawingManager at the top center remains visible */
-.gmnoprint .gm-draw {
-    display: block !important;
+.modal,
+.modal-dialog,
+.modal-content,
+.modal-body {
+  overflow: visible !important;
+}
+
+.gmnoprint,
+.gm-drawing-panel {
+  z-index: 99999 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.gm-style {
+  overflow: visible !important;
 }

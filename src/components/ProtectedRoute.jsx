@@ -1,21 +1,24 @@
 import React from 'react';
-
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import MasterLayout from '../masterLayout/MasterLayout';
+import MasterLayout from '../masterLayout/MasterLayout'; // Ensure path is correct
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = () => {
   const { user, loading } = useAuth();
   const token = localStorage.getItem('token');
 
-  if (loading) return null; // Wait for the AuthContext to initialize
+  if (loading) return null;
 
-  // If there's no user in state and no token in storage, kick them to sign-in
   if (!user && !token) {
     return <Navigate to="/signin" replace />;
   }
 
-  // KEY FIX: This is the ONLY place MasterLayout should be called
-  return <MasterLayout>{children}</MasterLayout>;
+  return (
+    <MasterLayout>
+      {/* Outlet renders the specific page (Overview, Users, etc.) inside the layout */}
+      <Outlet />
+    </MasterLayout>
+  );
 };
 
 export default ProtectedRoute;

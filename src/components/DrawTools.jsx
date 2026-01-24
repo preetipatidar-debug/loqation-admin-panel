@@ -1,87 +1,150 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { DrawingManager, Polygon } from '@react-google-maps/api';
+import React, { useEffect, useRef, useState } from "react";
+import { DrawingManager, Polygon, useGoogleMap } from "@react-google-maps/api";
+
+/* ================= NORMALIZATION ================= */
+
+const normalizePolygons = (data) => {
+  if (!data) return [];
+
+  let parsed;
+  try {
+    parsed = typeof data === "string" ? JSON.parse(data) : data;
+  } catch {
+    return [];
+  }
+
+  // Case 1: single path [{lat,lng}]
+  if (Array.isArray(parsed) && parsed.length && parsed[0]?.lat !== undefined) {
+    return [parsed];
+  }
+
+  // Case 2: array of paths
+  if (Array.isArray(parsed) && parsed.every(p => Array.isArray(p))) {
+    return parsed.filter(p => p.length);
+  }
+
+  // Case 3: old wrapped format [{ type:'polygon', path:[...] }]
+  if (Array.isArray(parsed)) {
+    const extracted = parsed
+      .map(p => p?.path)
+      .filter(p => Array.isArray(p) && p.length);
+    if (extracted.length) return extracted;
+  }
+
+  return [];
+};
+
+const polygonToPath = (polygon) =>
+  polygon.getPath().getArray().map(p => ({
+    lat: p.lat(),
+    lng: p.lng()
+  }));
+
+/* ================= COMPONENT ================= */
 
 const DrawTools = ({ data, onChange }) => {
-    const [polygonPath, setPolygonPath] = useState(() => {
-        if (!data) return [];
-        try {
-            // Parses the stored JSON string back into a coordinate array
-            return JSON.parse(data);
-        } catch (e) {
-            return [];
+  const map = useGoogleMap();
+
+  const [polygons, setPolygons] = useState([]);
+  const initializedRef = useRef(false);
+
+  /* ===== INITIAL LOAD (EDIT MODE ONLY) ===== */
+  useEffect(() => {
+    if (initializedRef.current) return;
+
+    const normalized = normalizePolygons(data);
+    if (normalized.length) {
+      setPolygons(normalized);
+    }
+
+    initializedRef.current = true;
+  }, [data]);
+
+  /* ===== FIT MAP TO POLYGONS ===== */
+  useEffect(() => {
+    if (!map || polygons.length === 0) return;
+
+    const bounds = new window.google.maps.LatLngBounds();
+
+    polygons.forEach(path => {
+      if (!Array.isArray(path)) return;
+      path.forEach(point => {
+        if (point?.lat != null && point?.lng != null) {
+          bounds.extend(point);
         }
+      });
     });
 
-    const drawingManagerRef = useRef(null);
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds);
+    }
+  }, [map, polygons]);
 
-    // Triggered when a user finishes drawing a polygon
-    const onPolygonComplete = useCallback((polygon) => {
-        const path = polygon.getPath().getArray().map(latLng => ({
-            lat: latLng.lat(),
-            lng: latLng.lng()
-        }));
+  /* ===== DRAW ===== */
+  const onPolygonComplete = (polygon) => {
+    const newPath = polygonToPath(polygon);
+    polygon.setMap(null);
 
-        // Convert the path to a JSON string for database storage
-        const jsonPath = JSON.stringify(path);
-        setPolygonPath(path);
-        onChange(jsonPath);
+    setPolygons(prev => {
+      const updated = [...prev, newPath];
+      onChange(JSON.stringify(updated));
+      return updated;
+    });
+  };
 
-        // Remove the temporary drawing shape so we can render the state-controlled one
-        polygon.setMap(null);
-    }, [onChange]);
+  /* ===== EDIT ===== */
+  const attachEditListeners = (polygon, index) => {
+    const update = () => {
+      setPolygons(prev => {
+        const updated = [...prev];
+        updated[index] = polygonToPath(polygon);
+        onChange(JSON.stringify(updated));
+        return updated;
+      });
+    };
 
-    // Handles path adjustments when the polygon is edited/dragged
-    const onEdit = useCallback((e) => {
-        if (drawingManagerRef.current) {
-            // We find the polygon instance and get its updated path
-            const path = e.getPath().getArray().map(latLng => ({
-                lat: latLng.lat(),
-                lng: latLng.lng()
-            }));
-            onChange(JSON.stringify(path));
-        }
-    }, [onChange]);
+    polygon.getPath().addListener("set_at", update);
+    polygon.getPath().addListener("insert_at", update);
+  };
 
-    return (
-        <>
-            <DrawingManager
-                onLoad={dm => (drawingManagerRef.current = dm)}
-                onPolygonComplete={onPolygonComplete}
-                options={{
-                    drawingControl: !data, // Hide tools if a boundary already exists
-                    drawingControlOptions: {
-                        position: window.google.maps.ControlPosition.TOP_CENTER,
-                        drawingModes: ['polygon'],
-                    },
-                    polygonOptions: {
-                        fillColor: '#485afe',
-                        fillOpacity: 0.3,
-                        strokeWeight: 2,
-                        clickable: true,
-                        editable: true,
-                        zIndex: 1,
-                    },
-                }}
-            />
+  return (
+    <>
+      <DrawingManager
+        onPolygonComplete={onPolygonComplete}
+        options={{
+          drawingControl: true,
+          drawingControlOptions: {
+            position: window.google.maps.ControlPosition.TOP_CENTER,
+            drawingModes: ["polygon"]
+          },
+          polygonOptions: {
+            fillColor: "#485afe",
+            fillOpacity: 0.3,
+            strokeColor: "#485afe",
+            strokeWeight: 2,
+            editable: true
+          }
+        }}
+      />
 
-            {/* Render the saved polygon if data exists */}
-            {polygonPath.length > 0 && (
-                <Polygon
-                    paths={polygonPath}
-                    options={{
-                        fillColor: '#485afe',
-                        fillOpacity: 0.3,
-                        strokeColor: '#485afe',
-                        strokeWeight: 2,
-                        editable: true,
-                        draggable: true
-                    }}
-                    onMouseUp={onEdit}
-                    onDragEnd={onEdit}
-                />
-            )}
-        </>
-    );
+      {polygons.map((path, index) =>
+        Array.isArray(path) ? (
+          <Polygon
+            key={index}
+            paths={path}
+            onLoad={(poly) => attachEditListeners(poly, index)}
+            options={{
+              fillColor: "#485afe",
+              fillOpacity: 0.3,
+              strokeColor: "#485afe",
+              strokeWeight: 2,
+              editable: true
+            }}
+          />
+        ) : null
+      )}
+    </>
+  );
 };
 
 export default DrawTools;

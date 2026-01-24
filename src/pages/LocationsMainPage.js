@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import MasterLayout from '../masterLayout/MasterLayout';
+import Breadcrumb from '../components/Breadcrumb';
 import api from '../services/api'; 
 import { toast } from 'react-toastify';
 import { Icon } from "@iconify/react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'; 
 import { GOOGLE_MAPS_LIBRARIES } from '../components/MapConfig';
-
+import { useGoogleMaps } from '../hook/useGoogleMaps';
 const MAP_CONTAINER_STYLE = { width: '100%', height: '400px' };
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
@@ -42,7 +42,10 @@ const LocationsMainPage = () => {
         opening_hours: { monday: '', tuesday: '', wednesday: '', thursday: '', friday: '', saturday: '', sunday: '' }
     });
 
-    const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY, libraries: GOOGLE_MAPS_LIBRARIES });
+   
+
+    const { isLoaded } = useGoogleMaps();
+
     const mapRef = useRef(null);
     const autocompleteRef = useRef(null);
 
@@ -113,7 +116,7 @@ const LocationsMainPage = () => {
     const currentItems = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     return (
-        <MasterLayout>
+        <>
             {/* Header & Table (UI maintained as per your previous screenshots) */}
             <div className="d-flex justify-content-between align-items-center mb-24 px-10">
                 <div className="d-flex align-items-center gap-3">
@@ -266,7 +269,7 @@ const LocationsMainPage = () => {
                     </div>
                 </div>
             )}
-        </MasterLayout>
+        </>
     );
 };
 

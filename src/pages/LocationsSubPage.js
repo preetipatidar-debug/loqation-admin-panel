@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import MasterLayout from '../masterLayout/MasterLayout';
+import Breadcrumb from '../components/Breadcrumb';
 import api from '../services/api'; 
 import { toast } from 'react-toastify';
 import { Icon } from "@iconify/react";
@@ -42,7 +42,7 @@ const LocationsSubPage = () => {
     const currentItems = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     return (
-        <MasterLayout>
+        <>
             <div className="d-flex justify-content-between align-items-center mb-24 px-10">
                 <div className="d-flex align-items-center gap-3">
                     <h5 className="mb-0 fw-bold">Sub Locations (Units)</h5>
@@ -89,7 +89,7 @@ const LocationsSubPage = () => {
                     </div>
                 </div>
             </div>
-        </MasterLayout>
+        </>
     );
 };
 
