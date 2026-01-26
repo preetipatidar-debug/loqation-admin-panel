@@ -2,24 +2,40 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+/* ================= ENV (LOCAL ONLY) ================= */
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: path.join(__dirname, '.env') });
+}
+
 const db = require('./db');
 const { syncLocationToGoogle } = require('./googleService');
 const { validateLocation } = require('./validator');
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 
-const client = new OAuth2Client(process.env.REACT_APP_GOOGLE_CLIENT_ID);
+/* ================= GOOGLE OAUTH CLIENT ================= */
+/* 🔑 Changed ONLY env var name */
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your_local_jwt_secret';
 //const JWT_SECRET = 'wowdash_secret_key_2026';
+
 const app = express();
 
+/* ================= COOP / COEP (UNCHANGED) ================= */
 app.use((req, res, next) => {
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
     res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
     next();
 });
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+
+/* ================= CORS (LOCAL + GAE) ================= */
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
+
 app.use(express.json());
 
 // ==========================================
@@ -56,9 +72,10 @@ const formatDate = (value) => {
 
 // ==========================================
 // 1. AUTH ROUTES (Restricted Whitelist)
+// ==========================================
 app.post('/api/auth/google-signin', async (req, res) => {
     const { credential } = req.body;
-    
+
     if (!credential || typeof credential !== 'string') {
         return res.status(400).json({ success: false, message: "Invalid Token" });
     }
@@ -66,40 +83,40 @@ app.post('/api/auth/google-signin', async (req, res) => {
     try {
         const ticket = await client.verifyIdToken({
             idToken: credential,
-            audience: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+            audience: process.env.GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
 
         // WHITELIST CHECK
         const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [payload.email]);
-        
+
         if (rows.length === 0) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Unauthorized: User not registered in system." 
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: User not registered in system."
             });
         }
 
-        const user = { 
+        const user = {
             id: rows[0].id,
-            email: payload.email, 
-            name: payload.name, 
-            picture: payload.picture, 
-            role: rows[0].role 
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture,
+            role: rows[0].role
         };
+
         try {
             await db.execute(
                 'UPDATE users SET last_login = NOW() WHERE id = ?',
                 [user.id]
             );
-            console.log(`Updated last_login for user: ${user.email}`);
         } catch (updateErr) {
             console.error("Failed to update last login:", updateErr);
-            // We don't block login if this fails, but we log it
         }
+
         const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-        
         res.json({ success: true, token, user });
+
     } catch (error) {
         res.status(401).json({ success: false, message: "Verification failed" });
     }
@@ -323,5 +340,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
 });
 
-const PORT = process.env.SERVER_PORT || 3001; 
-app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
+/* ================= START SERVER ================= */
+/* 🔑 CRITICAL FIX: App Engine compatible port */
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
