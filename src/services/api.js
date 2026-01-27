@@ -1,7 +1,10 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || "/api",
+  baseURL:
+    process.env.NODE_ENV === "production"
+      ? "/api"            // same origin on App Engine
+      : "http://localhost:3001/api",
   withCredentials: true,
 });
 

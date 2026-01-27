@@ -1,60 +1,84 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import '../custom.css';
 
+
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 const SignInPage = () => {
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const signInDivRef = useRef(null);
+ const { login } = useAuth();
+ const navigate = useNavigate();
+ const signInDivRef = useRef(null);
 
-  const handleCallbackResponse = async (response) => {
-    if (!response.credential) return;
 
-    try {
-      const success = await login(response.credential);
-      if (success) {
-        toast.success('Welcome back!');
-        navigate('/dashboard');
-      }
-    } catch {
-      toast.error('Sign-In failed. Please try again.');
-    }
-  };
+ const handleCallbackResponse = useCallback(async (response) => {
+   if (!response.credential) return;
 
-  useEffect(() => {
-    if (!window.google || !GOOGLE_CLIENT_ID) return;
 
-    const renderButtonSafely = () => {
-      const el = signInDivRef.current;
-      if (!el) return;
+   try {
+     const success = await login(response.credential);
+     if (success) {
+       toast.success('Welcome back!');
+       navigate('/dashboard');
+     } else {
+       toast.error('Sign-In failed. Please check your credentials and try again.');
+     }
+   } catch (error) {
+     console.error('Sign-in error:', error);
+     toast.error('An unexpected error occurred during sign-in.');
+   }
+ }, [login, navigate]);
 
-      const width = el.getBoundingClientRect().width;
-      if (width === 0) {
-        // layout not ready yet
-        requestAnimationFrame(renderButtonSafely);
-        return;
-      }
 
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleCallbackResponse,
-      });
+ useEffect(() => {
+   let attempts = 0;
+   const maxAttempts = 10; // Try for ~2.5 seconds
 
-      window.google.accounts.id.renderButton(el, {
-        theme: 'outline',
-        size: 'large',
-        width: width,
-        text: 'signin_with',
-        shape: 'rectangular',
-      });
-    };
 
-    requestAnimationFrame(renderButtonSafely);
-  }, []);
+   const renderButton = () => {
+     try {
+       if (window.google && signInDivRef.current) {
+         if (signInDivRef.current.childElementCount > 0) {
+           return;
+         }
+
+
+         const width = signInDivRef.current.getBoundingClientRect().width;
+         if (width > 0) {
+           window.google.accounts.id.initialize({
+             client_id: GOOGLE_CLIENT_ID,
+             callback: handleCallbackResponse,
+           });
+           window.google.accounts.id.renderButton(signInDivRef.current, {
+             theme: 'outline',
+             size: 'large',
+             width: width,
+             text: 'signin_with',
+             shape: 'rectangular',
+           });
+         } else {
+           requestAnimationFrame(renderButton);
+         }
+       } else if (attempts < maxAttempts) {
+         attempts++;
+         setTimeout(renderButton, 250);
+       } else {
+         console.error("Failed to load Google Sign-In button after multiple attempts.");
+         toast.error("Could not load Google Sign-In. Please check your connection and try refreshing the page.");
+       }
+     } catch (error) {
+       console.error("Error rendering Google Sign-In button:", error);
+     }
+   };
+
+
+   renderButton();
+
+
+ }, [handleCallbackResponse]);
+
 
   return (
     <div
@@ -77,10 +101,11 @@ const SignInPage = () => {
         }}
       >
         <div className="card-body text-center">
-          <div style={{ width: '100%', minHeight: '44px', padding: '30px' }}>
-          <img src="assets/images/logo.png" alt="Qiu AI Logo" width="150%" ></img></div>
-          <p className="text-muted mb-4">Please use your Google Account to continue</p>
-          <div style={{ width: '100%', minHeight: '44px', padding: '20px' }}>
+          <h2 className="fw-bold mb-2">Loqation</h2>
+          <p className="text-muted mb-4">Please sign in to continue</p>
+
+          {/* 🔑 FIX: force real width */}
+          <div style={{ width: '100%', minHeight: '44px' }}>
             <div
               ref={signInDivRef}
               style={{
@@ -93,7 +118,7 @@ const SignInPage = () => {
 
           <div className="mt-4">
             <small className="text-muted">
-              © 2026 Qiu AI GmbH. All Rights Reserved.
+              By continuing, you agree to our Terms and Conditions.
             </small>
           </div>
         </div>
@@ -102,4 +127,8 @@ const SignInPage = () => {
   );
 };
 
+
 export default SignInPage;
+
+
+
