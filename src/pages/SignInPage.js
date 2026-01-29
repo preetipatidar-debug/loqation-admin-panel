@@ -77,7 +77,7 @@ const SignInPage = () => {
         }}
       >
         <div className="card-body text-center">
-          <h2 className="fw-bold mb-2">Loqation</h2>
+          <h2 className="fw-bold mb-2">Qiu One</h2>
           <p className="text-muted mb-4">Please sign in to continue</p>
 
           {/* 🔑 FIX: force real width */}

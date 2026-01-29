@@ -3,13 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server/index.js",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "server": "nodemon server/index.js",
-    "dev": "concurrently \"npm run server\" \"react-scripts start\""
-  },
+  "start": "react-scripts start",
+  "build": "react-scripts build"
+},
   "dependencies": {
     "@iconify/react": "^6.0.2",
     "@react-google-maps/api": "^2.20.8",
