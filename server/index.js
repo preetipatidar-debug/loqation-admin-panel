@@ -18,8 +18,7 @@ const jwt = require('jsonwebtoken');
 /* 🔑 Changed ONLY env var name */
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_local_jwt_secret';
-//const JWT_SECRET = 'wowdash_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'wowdash_secret_key_2026';
 
 const app = express();
 
@@ -32,9 +31,12 @@ app.use((req, res, next) => {
 
 /* ================= CORS (LOCAL + GAE) ================= */
 app.use(cors({
-    origin: true,
-    credentials: true
-}));
+    origin: [
+      "http://localhost:3000",
+      "https://app-dot-loqation-experience-demo.nw.r.appspot.com"
+    ],
+    credentials: true,
+  }));
 
 app.use(express.json());
 
@@ -79,7 +81,7 @@ app.post('/api/auth/google-signin', async (req, res) => {
     if (!credential || typeof credential !== 'string') {
         return res.status(400).json({ success: false, message: "Invalid Token" });
     }
-
+    
     try {
         const ticket = await client.verifyIdToken({
             idToken: credential,
@@ -118,6 +120,7 @@ app.post('/api/auth/google-signin', async (req, res) => {
         res.json({ success: true, token, user });
 
     } catch (error) {
+        console.error("Token verification failed:", error);
         res.status(401).json({ success: false, message: "Verification failed" });
     }
 });
