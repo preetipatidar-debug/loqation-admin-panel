@@ -1,315 +1,282 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../services/api";
-import { toast } from "react-toastify";
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Breadcrumb from '../components/Breadcrumb';
+import api from '../services/api'; 
+import { toast } from 'react-toastify';
 import { Icon } from "@iconify/react";
-import {
-  GoogleMap,
-  Autocomplete
-} from "@react-google-maps/api";
-import { useGoogleMaps } from "../hook/useGoogleMaps";
-import DrawTools from "../components/DrawTools";
-
-/* ================= CONSTANTS ================= */
-const MAP_CONTAINER_STYLE = { width: "100%", height: "520px" };
+import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'; 
+import { GOOGLE_MAPS_LIBRARIES } from '../components/MapConfig';
+import { useGoogleMaps } from '../hook/useGoogleMaps';
+const MAP_CONTAINER_STYLE = { width: '100%', height: '400px' };
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
-const LocationsTopPage = () => {
-  const navigate = useNavigate();
+const TABS = [
+    "Basic Info", "Location", "Description", "Communication", 
+    "Opening Hours", "Amenities", "Media", "Google Sync", 
+    "Attributes", "Accessibility", "Services", "Health & Safety", "Payments"
+];
 
-  /* ================= LIST ================= */
-  const [areas, setAreas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
+const LocationsMainPage = () => {
+    const { state } = useLocation();
+    const navigate = useNavigate();
+    
+    const [locations, setLocations] = useState([]);
+    const [parentAreas, setParentAreas] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sortConfig, setSortConfig] = useState({ key: 'location_name', direction: 'asc' });
+    const [activeFilter, setActiveFilter] = useState(state?.filterAreaId || null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const rowsPerPage = 25;
 
-  /* ================= MODAL / FORM ================= */
-  const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [drawVersion, setDrawVersion] = useState(0);
+    const [showModal, setShowModal] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [activeTab, setActiveTab] = useState("Basic Info");
+    const [loading, setLoading] = useState(true);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    geometrics_outline: ""
-  });
+    const [formData, setFormData] = useState({
+        location_name: '', top_location_id: '', city: '',
+        street_address: '', state: '', postal_code: '', 
+        lat: 28.6139, lng: 77.2090, phone_number: '', 
+        email: '', website_url: '', description: '', 
+        sync_status: 'PENDING',
+        opening_hours: { monday: '', tuesday: '', wednesday: '', thursday: '', friday: '', saturday: '', sunday: '' }
+    });
 
-  /* ================= MAP ================= */
-  const mapRef = useRef(null);
-  const autocompleteRef = useRef(null);
-  const { isLoaded } = useGoogleMaps();
+   
 
-  /* ================= FETCH ================= */
-  useEffect(() => {
-    fetchAreas();
-  }, []);
+    const { isLoaded } = useGoogleMaps();
 
-  const fetchAreas = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/top-locations");
-      setAreas(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      toast.error("Failed to load top locations");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const mapRef = useRef(null);
+    const autocompleteRef = useRef(null);
 
-  /* ================= MAP LOAD ================= */
-  const onMapLoad = useCallback((map) => {
-    mapRef.current = map;
-  }, []);
+    useEffect(() => { fetchData(); }, []);
 
-  const onPlaceChanged = () => {
-    const place = autocompleteRef.current?.getPlace();
-    if (place?.geometry && mapRef.current) {
-      mapRef.current.panTo(place.geometry.location);
-      mapRef.current.setZoom(15);
-    }
-  };
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [locs, areas] = await Promise.all([ api.get('/main-locations'), api.get('/options/top-locations') ]);
+            setLocations(Array.isArray(locs.data) ? locs.data : (locs.data?.data || []));
+            setParentAreas(areas.data || []);
+        } catch (err) { toast.error("Error loading data"); } finally { setLoading(false); }
+    };
 
-  /* ================= SAVE ================= */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editId) {
-        await api.put(`/top-locations/${editId}`, formData);
-        toast.success("Location updated");
-      } else {
-        await api.post("/top-locations", formData);
-        toast.success("Location created");
-      }
-      setShowModal(false);
-      fetchAreas();
-    } catch {
-      toast.error("Save failed");
-    }
-  };
+    const handleOpenAdd = () => {
+        setEditId(null);
+        setFormData({
+            location_name: '', top_location_id: '', city: '', street_address: '', 
+            state: '', postal_code: '', lat: 28.6139, lng: 77.2090, 
+            phone_number: '', email: '', website_url: '', description: '', 
+            sync_status: 'PENDING',
+            opening_hours: { monday: '', tuesday: '', wednesday: '', thursday: '', friday: '', saturday: '', sunday: '' }
+        });
+        setActiveTab("Basic Info");
+        setShowModal(true);
+    };
 
-  /* ================= DELETE ================= */
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this top location?")) return;
-    try {
-      await api.delete(`/top-locations/${id}`);
-      toast.success("Location deleted");
-      fetchAreas();
-    } catch {
-      toast.error("Delete failed");
-    }
-  };
+    const handleEdit = (loc) => {
+        setEditId(loc.id);
+        setFormData({ ...loc, opening_hours: loc.opening_hours || formData.opening_hours });
+        setActiveTab("Basic Info");
+        setShowModal(true);
+    };
 
-  const filteredAreas = areas.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase())
-  );
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const method = editId ? 'put' : 'post';
+            const url = editId ? `/main-locations/${editId}` : '/main-locations';
+            await api[method](url, formData);
+            toast.success("Business profile saved!");
+            setShowModal(false);
+            fetchData();
+        } catch (err) { toast.error("Save failed"); }
+    };
 
-  return (
-    <>
-      {/* ================= HEADER ================= */}
+    const onPlaceChanged = () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (place?.geometry) {
+            const newPos = { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() };
+            setFormData(prev => ({ 
+                ...prev, lat: newPos.lat, lng: newPos.lng, street_address: place.formatted_address,
+                city: place.address_components?.find(c => c.types.includes("locality"))?.long_name || prev.city
+            }));
+            mapRef.current.panTo(newPos);
+        }
+    };
+
+    const filteredData = locations.filter(loc => 
+        loc.location_name?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (activeFilter ? String(loc.top_location_id) === String(activeFilter) : true)
+    ).sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const currentItems = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+    return (
+        <>
+
+
+               {/* ================= HEADER ================= */}
       <div className="d-flex justify-content-between align-items-center mb-24">
         <div>
-          <h5 className="fw-bold mb-4"> Google Locations</h5>
-          <p className="text-secondary mb-0">
-            Manage top-level geographical areas
-          </p>
+          <h5 className="fw-bold mb-4">Google Maps Locations - List View</h5>
         </div>
 
-        <button
-          className="btn btn-primary-600 d-flex align-items-center gap-2"
-          onClick={() => {
-            setEditId(null);
-            setFormData({ name: "", description: "", geometrics_outline: "" });
-            setDrawVersion(v => v + 1);
-            setShowModal(true);
-          }}
-        >
-          <Icon icon="lucide:plus" />
-          Add Top Location
-        </button>
       </div>
-
+               
       {/* ================= SEARCH ================= */}
-      <div className="card radius-12 border-0 shadow-sm mb-16">
+
+                    <div className="position-relative w-25">
         <div className="card-body py-12">
           <input
             className="form-control"
-            placeholder="Search top locations..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+            placeholder="Search Google Maps Locations..."
+            value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}} />
         </div>
       </div>
 
-      {/* ================= TABLE ================= */}
-      <div className="card radius-12 border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="bg-light border-bottom">
-              <tr>
-                <th className="ps-24">Name</th>
-                <th>Description</th>
-                <th className="text-end pe-24">Actions</th>
-              </tr>
-            </thead>
+            <div className="card radius-12 border-0 shadow-sm overflow-hidden">
+                <table className="table mb-0 align-middle">
+                    <thead className="text-secondary-light border-bottom bg-white" style={{ fontSize: '13px', cursor: 'pointer' }}>
+                        <tr>
+                            <th className="ps-24" style={{ width: '40px' }}><input type="checkbox" className="form-check-input" /></th>
+                            <th onClick={() => setSortConfig({ key: 'location_name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>Name <Icon icon="lucide:arrow-up-down" width="12" /></th>
+                            <th>Parent Area</th><th>City</th><th>Status</th><th className="text-end pe-24">Opts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (<tr><td colSpan="6" className="text-center py-40">Loading...</td></tr>) : currentItems.map(loc => (
+                            <tr key={loc.id} className="border-bottom">
+                                <td className="ps-24"><input type="checkbox" className="form-check-input" /></td>
+                                <td className="fw-bold text-primary-600 pointer" onClick={() => navigate('/locations-sub', { state: { filterBusinessId: loc.id, filterBusinessName: loc.location_name } })}>{loc.location_name}</td>
+                                <td>{loc.top_location_name || '--'}</td><td>{loc.city}</td>
+                                <td><span className={`badge px-12 ${loc.sync_status === 'SYNCED' ? 'bg-success-100 text-success' : 'bg-warning-100 text-warning'}`}>{loc.sync_status}</span></td>
+                                <td className="text-end pe-24">
+                                    <Icon icon="lucide:edit-3" width="18" className="pointer me-3" onClick={() => handleEdit(loc)} />
+                                    <Icon icon="lucide:trash-2" width="18" className="pointer text-danger" />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan="5" className="text-center py-24">
-                    Loading...
-                  </td>
-                </tr>
-              )}
+            {/* --- MODAL WITH LEFT SIDEBAR TABS --- */}
+            {showModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-xl modal-dialog-centered" style={{ maxWidth: '95%' }}>
+                        <div className="modal-content radius-16 border-0 shadow-lg overflow-hidden">
+                            <form onSubmit={handleSubmit} className="d-flex flex-column" style={{ height: '85vh' }}>
+                                {/* Modal Header */}
+                                <div className="modal-header border-bottom p-20 bg-base d-flex justify-content-between align-items-center flex-shrink-0">
+                                    <h6 className="mb-0 fw-bold">{editId ? 'Edit Business Profile' : 'New Business Profile'}</h6>
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn-close shadow-none"></button>
+                                </div>
+                                
+                                <div className="modal-body p-0 d-flex flex-grow-1 overflow-hidden">
+                                    {/* LEFT SIDEBAR: Tabs */}
+                                    <div className="sidebar-tabs bg-neutral-50 border-end flex-shrink-0" style={{ width: '220px', overflowY: 'auto' }}>
+                                        {TABS.map(tab => (
+                                            <button 
+                                                key={tab} 
+                                                type="button" 
+                                                className={`w-100 text-start py-16 px-24 border-bottom text-sm fw-bold transition-all ${activeTab === tab ? 'bg-white text-primary-600 border-start border-start-4 border-primary-600' : 'text-secondary border-transparent'}`}
+                                                onClick={() => setActiveTab(tab)}
+                                            >
+                                                {tab}
+                                            </button>
+                                        ))}
+                                    </div>
 
-              {!loading && filteredAreas.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center py-24">
-                    No locations found
-                  </td>
-                </tr>
-              )}
+                                    {/* RIGHT SIDE: Content Area */}
+                                    <div className="tab-content-area flex-grow-1 p-32 overflow-auto bg-white">
+                                        <h5 className="mb-24 fw-bold border-bottom pb-12">{activeTab}</h5>
+                                        
+                                        {activeTab === "Basic Info" && (
+                                            <div className="row g-4">
+                                                <div className="col-md-6"><label className="form-label fw-bold">Business Name</label><input type="text" className="form-control" value={formData.location_name} onChange={e => setFormData({...formData, location_name: e.target.value})} required /></div>
+                                                <div className="col-md-6"><label className="form-label fw-bold">Parent Area</label><select className="form-select" value={formData.top_location_id} onChange={e => setFormData({...formData, top_location_id: e.target.value})}><option value="">Select Area</option>{parentAreas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></div>
+                                                <div className="col-12"><label className="form-label fw-bold">Internal Description</label><textarea className="form-control" rows="4" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+                                            </div>
+                                        )}
 
-              {!loading &&
-                filteredAreas.map((area) => (
-                  <tr key={area.id}>
-                    <td className="ps-24 fw-semibold">{area.name}</td>
-                    <td>{area.description || "-"}</td>
-                    <td className="text-end pe-24">
-                      <div className="d-inline-flex gap-3">
-                        <Icon
-                          icon="lucide:eye"
-                          className="text-primary pointer"
-                          onClick={() =>
-                            navigate("/locations-main", {
-                              state: {
-                                filterAreaId: area.id,
-                                filterAreaName: area.name
-                              }
-                            })
-                          }
-                        />
-                        <Icon
-                          icon="lucide:edit-3"
-                          className="text-warning pointer"
-                          onClick={() => {
-                            setEditId(area.id);
-                            setFormData({
-                              name: area.name,
-                              description: area.description,
-                              geometrics_outline: area.geometrics_outline || ""
-                            });
-                            setDrawVersion(v => v + 1);
-                            setShowModal(true);
-                          }}
-                        />
-                        <Icon
-                          icon="lucide:trash-2"
-                          className="text-danger pointer"
-                          onClick={() => handleDelete(area.id)}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                                        {activeTab === "Location" && (
+                                            <div className="row g-4">
+                                                <div className="col-lg-5">
+                                                    <label className="form-label fw-bold">Google Address Search</label>
+                                                    {isLoaded && <Autocomplete onLoad={a => autocompleteRef.current = a} onPlaceChanged={onPlaceChanged}><input type="text" className="form-control mb-3" placeholder="Type address..." /></Autocomplete>}
+                                                    <div className="mb-3"><label className="form-label text-xs fw-bold">Street Address</label><textarea className="form-control" rows="2" value={formData.street_address} onChange={e => setFormData({...formData, street_address: e.target.value})} /></div>
+                                                    <div className="row g-2">
+                                                        <div className="col-6"><label className="text-xs">City</label><input type="text" className="form-control" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
+                                                        <div className="col-6"><label className="text-xs">Zip Code</label><input type="text" className="form-control" value={formData.postal_code} onChange={e => setFormData({...formData, postal_code: e.target.value})} /></div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-lg-7 border radius-12 overflow-hidden shadow-sm p-0">
+                                                    {isLoaded && <GoogleMap mapContainerStyle={MAP_CONTAINER_STYLE} center={{ lat: Number(formData.lat), lng: Number(formData.lng) }} zoom={15} onLoad={m => mapRef.current = m} options={{ disableDefaultUI: true, zoomControl: true }}><Marker position={{ lat: Number(formData.lat), lng: Number(formData.lng) }} draggable onDragEnd={(e) => setFormData({...formData, lat: e.latLng.lat(), lng: e.latLng.lng()})} /></GoogleMap>}
+                                                </div>
+                                            </div>
+                                        )}
 
-      {/* ================= ADD / EDIT MODAL ================= */}
-      {showModal && (
-        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.6)" }}>
-          <div className="modal-dialog modal-xl modal-dialog-centered" style={{ maxWidth: "95%" }}>
-            <form className="modal-content" onSubmit={handleSubmit}>
-              <div className="modal-header">
-                <h6>{editId ? "Edit Top Location" : "Add Top Location"}</h6>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)} />
-              </div>
+                                        {activeTab === "Opening Hours" && (
+                                            <div className="row g-3">
+                                                {Object.keys(formData.opening_hours).map(day => (
+                                                    <div key={day} className="col-md-6 d-flex align-items-center gap-3 mb-2">
+                                                        <span className="fw-bold text-capitalize" style={{ width: '100px' }}>{day}</span>
+                                                        <input type="text" className="form-control" placeholder="09:00 - 18:00" value={formData.opening_hours[day]} onChange={e => setFormData({...formData, opening_hours: {...formData.opening_hours, [day]: e.target.value}})} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
 
-              <div className="modal-body row g-4">
-                {/* LEFT FORM */}
-                <div className="col-lg-4">
-                  <input
-                    className="form-control mb-3"
-                    placeholder="Location Name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
+                                        {activeTab === "Communication" && (
+                                            <div className="row g-4">
+                                                <div className="col-md-6"><label className="form-label fw-bold">Phone</label><input type="text" className="form-control" value={formData.phone_number} onChange={e => setFormData({...formData, phone_number: e.target.value})} /></div>
+                                                <div className="col-md-6"><label className="form-label fw-bold">Email</label><input type="email" className="form-control" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
+                                                <div className="col-12"><label className="form-label fw-bold">Website</label><input type="url" className="form-control" value={formData.website_url} onChange={e => setFormData({...formData, website_url: e.target.value})} /></div>
+                                            </div>
+                                        )}
 
-                  <textarea
-                    className="form-control mb-3"
-                    placeholder="Description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                  />
+                                        {/* Generic UI for Checkbox Tabs (Amenities, Payments, Accessibility, etc.) */}
+                                        {["Amenities", "Accessibility", "Health & Safety", "Payments", "Attributes", "Services"].includes(activeTab) && (
+                                            <div className="row g-4">
+                                                <div className="col-12"><p className="text-secondary-light mb-16">Select all that apply for this location:</p></div>
+                                                {["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6"].map(opt => (
+                                                    <div key={opt} className="col-md-4">
+                                                        <div className="form-check p-12 border radius-8 hover-bg-neutral-50 transition-all">
+                                                            <input className="form-check-input ms-0 me-12" type="checkbox" id={opt} />
+                                                            <label className="form-check-label pointer fw-medium" htmlFor={opt}>{opt}</label>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
 
-                  <textarea
-                    className="form-control"
-                    style={{ height: 220, fontFamily: "monospace", fontSize: 12 }}
-                    readOnly
-                    value={formData.geometrics_outline}
-                    placeholder="Draw boundary on map..."
-                  />
+                                        {activeTab === "Media" && (
+                                            <div className="p-60 text-center border-dashed radius-16 bg-neutral-50">
+                                                <Icon icon="solar:camera-bold-duotone" width="64" className="text-primary-600 mb-16 opacity-50" />
+                                                <h5>Media Assets</h5>
+                                                <p className="text-secondary-light">Upload Logo, Cover Photo, and Gallery images here.</p>
+                                                <button type="button" className="btn btn-primary-600 mt-16 px-32">Select Files</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="modal-footer p-20 border-top bg-base flex-shrink-0">
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline-secondary px-32 radius-8">Discard</button>
+                                    <button type="submit" className="btn btn-primary-600 px-40 radius-8">Save Business Profile</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-
-                {/* MAP */}
-                <div className="col-lg-8">
-                  {isLoaded && (
-                    <>
-                      <Autocomplete
-                        onLoad={(a) => (autocompleteRef.current = a)}
-                        onPlaceChanged={onPlaceChanged}
-                      >
-                        <input
-                          className="form-control mb-2"
-                          placeholder="Search place..."
-                        />
-                      </Autocomplete>
-
-                      <GoogleMap
-                        mapContainerStyle={MAP_CONTAINER_STYLE}
-                        center={DEFAULT_CENTER}
-                        zoom={11}
-                        onLoad={onMapLoad}
-                      >
-                        <DrawTools
-                          key={drawVersion}
-                          data={formData.geometrics_outline}
-                          onChange={(json) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              geometrics_outline: json
-                            }))
-                          }
-                        />
-                      </GoogleMap>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary-600">
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
-  );
+            )}
+        </>
+    );
 };
 
-export default LocationsGooglePage;
+export default LocationsMainPage;

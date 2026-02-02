@@ -108,9 +108,6 @@ const LocationsTopPage = () => {
       <div className="d-flex justify-content-between align-items-center mb-24">
         <div>
           <h5 className="fw-bold mb-4">Top Locations - List View</h5>
-          <p className="text-secondary mb-0">
-            Manage top-level geographical areas
-          </p>
         </div>
 
         <button
@@ -126,13 +123,13 @@ const LocationsTopPage = () => {
           Add Top Location
         </button>
       </div>
-
+               
       {/* ================= SEARCH ================= */}
-      <div className="card radius-12 border-0 shadow-sm mb-16">
+              <div className="position-relative w-25">
         <div className="card-body py-12">
           <input
             className="form-control"
-            placeholder="Search top locations..."
+            placeholder="Search Top Locations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

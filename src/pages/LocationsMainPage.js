@@ -117,20 +117,38 @@ const LocationsMainPage = () => {
 
     return (
         <>
-            {/* Header & Table (UI maintained as per your previous screenshots) */}
-            <div className="d-flex justify-content-between align-items-center mb-24 px-10">
-                <div className="d-flex align-items-center gap-3">
-                    <h5 className="mb-0 fw-bold">Main Locations - List View</h5>
-                    {activeFilter && <span className="badge bg-primary-100 text-primary-600 px-12 py-8 radius-8 pointer" onClick={() => setActiveFilter(null)}>Filtered <Icon icon="lucide:x" /></span>}
-                </div>
-                <div className="d-flex gap-3">
-                    <div className="position-relative">
-                        <Icon icon="lucide:search" className="position-absolute top-50 start-0 translate-middle-y ms-12 text-secondary-light" />
-                        <input type="text" className="form-control ps-40 radius-8" placeholder="Search businesses..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
-                    <button onClick={handleOpenAdd} className="btn btn-primary-600 radius-12 px-24">Add Business</button>
-                </div>
-            </div>
+
+
+               {/* ================= HEADER ================= */}
+      <div className="d-flex justify-content-between align-items-center mb-24">
+        <div>
+          <h5 className="fw-bold mb-4">Main Locations - List View</h5>
+        </div>
+
+        <button
+          className="btn btn-primary-600 d-flex align-items-center gap-2"
+          onClick={() => {
+            setEditId(null);
+            setFormData({ name: "", description: "", geometrics_outline: "" });
+            setDrawVersion(v => v + 1);
+            setShowModal(true);
+          }}
+        >
+          <Icon icon="lucide:plus" />
+          Add Main Location
+        </button>
+      </div>
+               
+      {/* ================= SEARCH ================= */}
+
+                    <div className="position-relative w-25">
+        <div className="card-body py-12">
+          <input
+            className="form-control"
+            placeholder="Search Top Locations..."
+            value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}} />
+        </div>
+      </div>
 
             <div className="card radius-12 border-0 shadow-sm overflow-hidden">
                 <table className="table mb-0 align-middle">
