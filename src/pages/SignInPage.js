@@ -44,6 +44,39 @@ const SignInPage = () => {
            return;
          }
 
+         const width = signInDivRef.current.getBoundingClientRect().width;
+         if (width > 0) {
+           window.google.accounts.id.initialize({
+             client_id: GOOGLE_CLIENT_ID,
+             callback: handleCallbackResponse,
+           });
+           window.google.accounts.id.renderButton(signInDivRef.current, {
+             theme: 'outline',
+             size: 'large',
+             width: width,
+             text: 'signin_with',
+             shape: 'rectangular',
+           });
+         } else {
+           requestAnimationFrame(renderButton);
+         }
+       } else if (attempts < maxAttempts) {
+         attempts++;
+         setTimeout(renderButton, 250);
+       } else {
+         console.error("Failed to load Google Sign-In button after multiple attempts.");
+         toast.error("Could not load Google Sign-In. Please check your connection and try refreshing the page.");
+       }
+     } catch (error) {
+       console.error("Error rendering Google Sign-In button:", error);
+     }
+   };
+
+
+   renderButton();
+
+
+ }, [handleCallbackResponse]);
 
          const width = signInDivRef.current.getBoundingClientRect().width;
          if (width > 0) {

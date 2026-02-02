@@ -30,7 +30,7 @@ const LocationsSubPage = () => {
     };
 
     const filteredData = subLocations.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.type.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.type.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesBusiness = activeFilter ? String(item.parent_id) === String(activeFilter) : true;
         return matchesSearch && matchesBusiness;
     }).sort((a, b) => {
@@ -45,7 +45,7 @@ const LocationsSubPage = () => {
         <>
             <div className="d-flex justify-content-between align-items-center mb-24 px-10">
                 <div className="d-flex align-items-center gap-3">
-                    <h5 className="mb-0 fw-bold">Sub Locations (Units)</h5>
+                    <h5 className="mb-0 fw-bold">Sub Locations  - List View</h5>
                     {activeFilter && <span className="badge bg-primary-100 text-primary-600 px-12 py-8 radius-8 pointer" onClick={() => setActiveFilter(null)}>Filtered by Business <Icon icon="lucide:x" /></span>}
                 </div>
                 <div className="position-relative w-25">
