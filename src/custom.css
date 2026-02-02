@@ -24,23 +24,3 @@ div[style*="z-index: 1000001"] {
 .gm-style-mtc {
     display: none !important;
 }
-/* GOOGLE MAP DRAWING TOOL FIX FOR BOOTSTRAP MODAL */
-
-.modal,
-.modal-dialog,
-.modal-content,
-.modal-body {
-  overflow: visible !important;
-}
-
-.gmnoprint,
-.gm-drawing-panel {
-  z-index: 99999 !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.gm-style {
-  overflow: visible !important;
-}
