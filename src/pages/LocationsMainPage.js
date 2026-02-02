@@ -105,7 +105,7 @@ const LocationsMainPage = () => {
     };
 
     const filteredData = locations.filter(loc => 
-        loc.location_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        loc.location_name?.toLowerCase().includes(searchTerm.toLowerCase()) &&
         (activeFilter ? String(loc.top_location_id) === String(activeFilter) : true)
     ).sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -120,7 +120,7 @@ const LocationsMainPage = () => {
             {/* Header & Table (UI maintained as per your previous screenshots) */}
             <div className="d-flex justify-content-between align-items-center mb-24 px-10">
                 <div className="d-flex align-items-center gap-3">
-                    <h5 className="mb-0 fw-bold">Main Locations (Businesses)</h5>
+                    <h5 className="mb-0 fw-bold">Main Locations - List View</h5>
                     {activeFilter && <span className="badge bg-primary-100 text-primary-600 px-12 py-8 radius-8 pointer" onClick={() => setActiveFilter(null)}>Filtered <Icon icon="lucide:x" /></span>}
                 </div>
                 <div className="d-flex gap-3">

@@ -77,11 +77,10 @@ const SignInPage = () => {
         }}
       >
         <div className="card-body text-center">
-          <h2 className="fw-bold mb-2">Qiu One</h2>
-          <p className="text-muted mb-4">Please sign in to continue</p>
-
-          {/* 🔑 FIX: force real width */}
-          <div style={{ width: '100%', minHeight: '44px' }}>
+          <div style={{ width: '100%', minHeight: '44px', padding: '30px' }}>
+          <img src="assets/images/logo.png" alt="Qiu AI Logo" width="150%" ></img></div>
+          <p className="text-muted mb-4">Please use your Google Account to continue</p>
+          <div style={{ width: '100%', minHeight: '44px', padding: '20px' }}>
             <div
               ref={signInDivRef}
               style={{
@@ -94,7 +93,7 @@ const SignInPage = () => {
 
           <div className="mt-4">
             <small className="text-muted">
-              By continuing, you agree to our Terms and Conditions.
+              © 2026 Qiu AI GmbH. All Rights Reserved.
             </small>
           </div>
         </div>

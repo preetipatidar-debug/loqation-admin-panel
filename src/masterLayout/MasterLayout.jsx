@@ -67,37 +67,47 @@ const MasterLayout = ({ children }) => {
         
         <div className='sidebar-menu-area'>
   <ul className='sidebar-menu' id='sidebar-menu'>
-    
-    {/* DASHBOARD GROUP */}
-    <li className='sidebar-menu-group-title text-uppercase'>Dashboard</li>
-    <li>
-      <NavLink 
-        to='/' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:widget-6-outline' className='menu-icon' />
-        <span>Overview</span>
-      </NavLink>
-    </li>
 
     {/* LOCATION MANAGEMENT GROUP */}
-    <li className='sidebar-menu-group-title text-uppercase'>Location Management</li>
+    <li className='sidebar-menu-group-title'>Top Locations</li>
     <li>
       <NavLink 
         to='/locations-top' 
         className={(navData) => navData.isActive ? "active-page" : ""}
       >
-        <Icon icon='solar:map-point-wave-outline' className='menu-icon' />
-        <span>Top Locations</span>
+        <Icon icon='solar:global-linear' className='menu-icon' />
+        <span>List View</span>
       </NavLink>
     </li>
+        <li>
+      <NavLink 
+        to='/locations-google' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:streets-map-point-linear' className='menu-icon' />
+        <span>Google Locations</span>
+      </NavLink>
+    </li>
+
+    <li className='sidebar-menu-group-title'>Main Locations</li>
     <li>
       <NavLink 
         to='/locations-main' 
         className={(navData) => navData.isActive ? "active-page" : ""}
       >
         <Icon icon='solar:city-outline' className='menu-icon' />
-        <span>Main Locations</span>
+        <span>List View</span>
+      </NavLink>
+    </li>
+
+    <li className='sidebar-menu-group-title'>Sub Locations</li>
+    <li>
+      <NavLink 
+        to='/locations-sub' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:shop-outline' className='menu-icon' />
+        <span>List View</span>
       </NavLink>
     </li>
     <li>
@@ -105,20 +115,50 @@ const MasterLayout = ({ children }) => {
         to='/locations-sub' 
         className={(navData) => navData.isActive ? "active-page" : ""}
       >
-        <Icon icon='solar:map-point-outline' className='menu-icon' />
-        <span>Sub Locations</span>
+        <Icon icon='solar:panorama-outline' className='menu-icon' />
+        <span>Permanent Layout</span>
+      </NavLink>
+    </li>
+      <li>
+      <NavLink 
+        to='/locations-sub' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:clock-circle-outline' className='menu-icon' />
+        <span>Events</span>
       </NavLink>
     </li>
 
     {/* ADMIN GROUP */}
-    <li className='sidebar-menu-group-title text-uppercase'>Admin</li>
+    <li className='sidebar-menu-group-title'>Client Information</li>
     <li>
       <NavLink 
         to='/users' 
         className={(navData) => navData.isActive ? "active-page" : ""}
       >
-        <Icon icon='solar:users-group-two-rounded-outline' className='menu-icon' />
-        <span>Manage Users</span>
+        <Icon icon='solar:buildings-2-linear' className='menu-icon' />
+        <span>Company</span>
+      </NavLink>
+    </li>
+
+        <li>
+      <NavLink 
+        to='/users' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:user-outline' className='menu-icon' />
+        <span>Users</span>
+      </NavLink>
+    </li>
+
+    <li className='sidebar-menu-group-title'>Support</li>
+    <li>
+      <NavLink 
+        to='https://www.google.com' 
+        className={(navData) => navData.isActive ? "active-page" : ""}
+      >
+        <Icon icon='solar:notes-outline' className='menu-icon' />
+        <span>Ticket System</span>
       </NavLink>
     </li>
 
@@ -187,7 +227,7 @@ const MasterLayout = ({ children }) => {
         <footer className='d-footer'>
           <div className='row align-items-center justify-content-between'>
             <div className='col-auto'>
-              <p className='mb-0'>© 2026 Loqation.ai. All Rights Reserved.</p>
+              <p className='mb-0'>© 2026 Qiu AI GmbH. All Rights Reserved.</p>
             </div>
           </div>
         </footer>
