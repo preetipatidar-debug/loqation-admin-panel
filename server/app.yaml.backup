@@ -1,0 +1,16 @@
+runtime: nodejs20
+
+env_variables:
+  # Cloud SQL Settings
+  DB_HOST: "34.32.119.210"
+  INSTANCE_CONNECTION_NAME: "loqation-experience-demo:europe-west10:trade-fair-demo"
+  DB_USER: "root"
+  DB_PASSWORD: "#XVEL0|k%{[0Nyc5"
+  DB_NAME: "loqations-trade-fair"
+  NODE_ENV: "production"
+  GOOGLE_CLIENT_ID: "621124414399-57v1o3ba343v1dcabd63d029053dphl9.apps.googleusercontent.com"
+  JWT_SECRET: "wowdash_secret_2026_fixed"
+  REACT_APP_GOOGLE_MAPS_API_KEY: "AIzaSyA3SP-t1dDcUSpZlYdz4zcBoDrjDEoh-pk"
+
+ 
+
