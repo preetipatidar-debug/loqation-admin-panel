@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DataTable from "../components/common/DataTable";
 import api from "../services/api";
 import { toast } from "react-toastify";
-
+import { useDebounce } from "../hook/useDebounce";
 const LocationsGooglePage = () => {
   const navigate = useNavigate();
 
@@ -13,7 +13,7 @@ const LocationsGooglePage = () => {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-
+  const debouncedSearch = useDebounce(search, 500);
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -22,7 +22,7 @@ const LocationsGooglePage = () => {
       });
 
       setData(res.data?.data || []);
-      setTotal(res.data?.total || 0);
+      setTotal(res.data?.pagination?.total || 0);
     } catch {
       toast.error("Failed to load Google Places");
     } finally {
@@ -32,7 +32,7 @@ const LocationsGooglePage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [search, page, limit]);
+  }, [debouncedSearch, page, limit]);
 
   return (
     <DataTable

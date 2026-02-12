@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import DataTable from "../components/common/DataTable";
 import api from "../services/api";
 import { toast } from "react-toastify";
-
+import { useDebounce } from "../hook/useDebounce";
 const UsersPage = () => {
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const debouncedSearch = useDebounce(search, 500);
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -22,7 +22,7 @@ const UsersPage = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [search]);
+  }, [debouncedSearch]);
 
   const handleDelete = async (row) => {
     if (!window.confirm("Revoke access?")) return;

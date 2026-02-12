@@ -2,12 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { verifyToken } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler');
 
-
-console.log("verify token == ",verifyToken);
 const safe = (v) => (v === undefined || v === '' ? null : v);
 
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', verifyToken, asyncHandler(async (req, res) => {
   const { search = '', page = 1, limit = 25 } = req.query;
   const offset = (page - 1) * limit;
 
@@ -33,37 +32,37 @@ router.get('/', verifyToken, async (req, res) => {
   );
 
   res.json({ data: rows, pagination: { page: Number(page), limit: Number(limit), total } });
-});
+}));
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, asyncHandler(async (req, res) => {
   const { name, description, geometrics_outline } = req.body;
   await db.execute(
     'INSERT INTO top_locations (name, description, geometrics_outline) VALUES (?, ?, ?)',
     [safe(name), safe(description), safe(geometrics_outline)]
   );
   res.json({ success: true });
-});
+}));
 
-router.get('/:id', verifyToken, async (req, res) => {
+router.get('/:id', verifyToken, asyncHandler(async (req, res) => {
   const [[row]] = await db.query(
     'SELECT * FROM top_locations WHERE id = ?',
     [req.params.id]
   );
   res.json(row || null);
-});
+}));
 
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken, asyncHandler(async (req, res) => {
   const { name, description, geometrics_outline } = req.body;
   await db.execute(
     'UPDATE top_locations SET name=?, description=?, geometrics_outline=? WHERE id=?',
     [safe(name), safe(description), safe(geometrics_outline), req.params.id]
   );
   res.json({ success: true });
-});
+}));
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', verifyToken, asyncHandler(async (req, res) => {
   await db.execute('DELETE FROM top_locations WHERE id = ?', [req.params.id]);
   res.json({ success: true });
-});
+}));
 
 module.exports = router;

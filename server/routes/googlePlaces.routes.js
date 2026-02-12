@@ -1,10 +1,12 @@
 const express = require('express');
 const db = require('../db');
 const { verifyToken } = require('../middleware/authMiddleware');
+const asyncHandler = require('../utils/asyncHandler'); // Import the wrapper
 
 const router = express.Router();
 
-router.get('/', verifyToken, async (req, res) => {
+// Applied asyncHandler to remove manual try/catch and handle errors globally
+router.get('/', verifyToken, asyncHandler(async (req, res) => {
   const { search = '', page = 1, limit = 25 } = req.query;
   const offset = (page - 1) * limit;
 
@@ -17,11 +19,13 @@ router.get('/', verifyToken, async (req, res) => {
     params.push(term, term);
   }
 
+  // Fetch total count for pagination
   const [[{ total }]] = await db.query(
     `SELECT COUNT(*) AS total FROM google_places_full ${where}`,
     params
   );
 
+  // Fetch paginated rows ordered by most recent
   const [rows] = await db.query(
     `SELECT * FROM google_places_full
      ${where}
@@ -30,7 +34,14 @@ router.get('/', verifyToken, async (req, res) => {
     [...params, Number(limit), Number(offset)]
   );
 
-  res.json({ data: rows, pagination: { page: Number(page), limit: Number(limit), total } });
-});
+  res.json({ 
+    data: rows, 
+    pagination: { 
+      page: Number(page), 
+      limit: Number(limit), 
+      total 
+    } 
+  });
+}));
 
 module.exports = router;

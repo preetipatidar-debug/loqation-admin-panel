@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import DataTable from "../components/common/DataTable";
 import api from "../services/api";
 import { toast } from "react-toastify";
-
+import { useDebounce } from "../hook/useDebounce";
 const LocationsMainListPage = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -18,7 +18,7 @@ const LocationsMainListPage = () => {
   const [limit, setLimit] = useState(25);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-
+  const debouncedSearch = useDebounce(search, 500);
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -32,7 +32,7 @@ const LocationsMainListPage = () => {
       });
 
       setData(res.data?.data || []);
-      setTotal(res.data?.total || 0);
+      setTotal(res.data?.pagination?.total || 0);
     } catch {
       toast.error("Failed to load main locations");
     } finally {
@@ -42,7 +42,7 @@ const LocationsMainListPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [search, page, limit, activeAreaId]);
+  }, [debouncedSearch, page, limit, activeAreaId]);
 
   return (
     <>
