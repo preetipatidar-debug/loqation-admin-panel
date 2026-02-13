@@ -1,220 +1,106 @@
-import React, { useEffect, useState } from "react";
-import { Icon } from "@iconify/react/dist/iconify.js";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Icon } from "@iconify/react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import ThemeToggleButton from "../helper/ThemeToggleButton";
-import { useAuth } from "../context/AuthContext"; // Use your Auth context
+import { useAuth } from "../context/AuthContext";
 
 const MasterLayout = ({ children }) => {
-  let [sidebarActive, seSidebarActive] = useState(false);
-  let [mobileMenu, setMobileMenu] = useState(false);
-  const location = useLocation();
+  const [sidebarActive, setSidebarActive] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [imgError, setImgError] = useState(false); // Track if image fails
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { user, logout } = useAuth(); // Get user and logout function
-
-  // Sidebar Dropdown Logic (Original Theme Logic)
-  useEffect(() => {
-    const handleDropdownClick = (event) => {
-      event.preventDefault();
-      const clickedLink = event.currentTarget;
-      const clickedDropdown = clickedLink.closest(".dropdown");
-      if (!clickedDropdown) return;
-      const isActive = clickedDropdown.classList.contains("open");
-
-      const allDropdowns = document.querySelectorAll(".sidebar-menu .dropdown");
-      allDropdowns.forEach((dropdown) => {
-        dropdown.classList.remove("open");
-        const submenu = dropdown.querySelector(".sidebar-submenu");
-        if (submenu) submenu.style.maxHeight = "0px";
-      });
-
-      if (!isActive) {
-        clickedDropdown.classList.add("open");
-        const submenu = clickedDropdown.querySelector(".sidebar-submenu");
-        if (submenu) submenu.style.maxHeight = `${submenu.scrollHeight}px`;
-      }
-    };
-
-    const dropdownTriggers = document.querySelectorAll(".sidebar-menu .dropdown > a");
-    dropdownTriggers.forEach((trigger) => trigger.addEventListener("click", handleDropdownClick));
-
-    return () => {
-      dropdownTriggers.forEach((trigger) => trigger.removeEventListener("click", handleDropdownClick));
-    };
-  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
-    navigate('/signin');
+    navigate("/signin");
   };
 
-  let sidebarControl = () => seSidebarActive(!sidebarActive);
-  let mobileMenuControl = () => setMobileMenu(!mobileMenu);
+  const getInitial = () => {
+    return user?.name ? user.name.charAt(0).toUpperCase() : "U";
+  };
 
   return (
-    <section className={mobileMenu ? "overlay active" : "overlay "}>
-      {/* sidebar */}
-      <aside className={sidebarActive ? "sidebar active " : mobileMenu ? "sidebar sidebar-open" : "sidebar"}>
-        <button onClick={mobileMenuControl} type='button' className='sidebar-close-btn'>
-          <Icon icon='radix-icons:cross-2' />
+    <section className={mobileMenu ? "overlay active" : "overlay"}>
+      {/* ========== SIDEBAR (Your Original Menu) ========== */}
+      <aside className={`sidebar ${sidebarActive ? "active" : ""} ${mobileMenu ? "sidebar-open" : ""}`}>
+        <button className="sidebar-close-btn" onClick={() => setMobileMenu(false)}>
+          <Icon icon="radix-icons:cross-2" />
         </button>
-        <div>
-          <Link to='/' className='sidebar-logo'>
-            <img src='assets/images/logo.png' alt='site logo' className='light-logo' />
-            <img src='assets/images/logo-light.png' alt='site logo' className='dark-logo' />
-            <img src='assets/images/logo-icon.png' alt='site logo' className='logo-icon' />
+
+        <div className="sidebar-header">
+          <Link to="/" className="sidebar-logo">
+            <img src="/assets/images/logo.png" className="light-logo" alt="logo" />
+            <img src="/assets/images/logo-light.png" className="dark-logo" alt="logo" />
           </Link>
         </div>
-        
-        <div className='sidebar-menu-area'>
-  <ul className='sidebar-menu' id='sidebar-menu'>
 
-    {/* LOCATION MANAGEMENT GROUP */}
-    <li className='sidebar-menu-group-title'>Top Locations</li>
-    <li>
-      <NavLink 
-        to='/locations-top' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:global-linear' className='menu-icon' />
-        <span>List View</span>
-      </NavLink>
-    </li>
-        <li>
-      <NavLink 
-        to='/locations-google' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:streets-map-point-linear' className='menu-icon' />
-        <span>Google Locations</span>
-      </NavLink>
-    </li>
+        <div className="sidebar-menu-area">
+          <ul className="sidebar-menu">
+            <li className="sidebar-menu-group-title">Top Locations</li>
+            <li><NavLink to="/locations-top"><Icon icon="solar:global-linear" className="menu-icon" /><span>List View</span></NavLink></li>
+            <li><NavLink to="/locations-google"><Icon icon="solar:streets-map-point-linear" className="menu-icon" /><span>Google Locations</span></NavLink></li>
 
-    <li className='sidebar-menu-group-title'>Main Locations</li>
-    <li>
-      <NavLink 
-        to='/locations-main' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:city-outline' className='menu-icon' />
-        <span>List View</span>
-      </NavLink>
-    </li>
+            <li className="sidebar-menu-group-title">Main Locations</li>
+            <li><NavLink to="/locations-main"><Icon icon="solar:city-outline" className="menu-icon" /><span>List View</span></NavLink></li>
 
-    <li className='sidebar-menu-group-title'>Sub Locations</li>
-    <li>
-      <NavLink 
-        to='/locations-sub' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:shop-outline' className='menu-icon' />
-        <span>List View</span>
-      </NavLink>
-    </li>
-    <li>
-      <NavLink 
-        to='/locations-sub' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:panorama-outline' className='menu-icon' />
-        <span>Permanent Layout</span>
-      </NavLink>
-    </li>
-      <li>
-      <NavLink 
-        to='/locations-sub' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:clock-circle-outline' className='menu-icon' />
-        <span>Events</span>
-      </NavLink>
-    </li>
+            <li className="sidebar-menu-group-title">Sub Locations</li>
+            <li><NavLink to="/locations-sub"><Icon icon="solar:shop-outline" className="menu-icon" /><span>List View</span></NavLink></li>
 
-    {/* ADMIN GROUP */}
-    <li className='sidebar-menu-group-title'>Client Information</li>
-    <li>
-      <NavLink 
-        to='/users' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:buildings-2-linear' className='menu-icon' />
-        <span>Company</span>
-      </NavLink>
-    </li>
+            <li className="sidebar-menu-group-title">Client Information</li>
+            <li><NavLink to="/company"><Icon icon="solar:buildings-2-linear" className="menu-icon" /><span>Company</span></NavLink></li>
+            <li><NavLink to="/users"><Icon icon="solar:user-outline" className="menu-icon" /><span>Users</span></NavLink></li>
 
-        <li>
-      <NavLink 
-        to='/users' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:user-outline' className='menu-icon' />
-        <span>Users</span>
-      </NavLink>
-    </li>
-
-    <li className='sidebar-menu-group-title'>Support</li>
-    <li>
-      <NavLink 
-        to='https://www.google.com' 
-        className={(navData) => navData.isActive ? "active-page" : ""}
-      >
-        <Icon icon='solar:notes-outline' className='menu-icon' />
-        <span>Ticket System</span>
-      </NavLink>
-    </li>
-
-  </ul>
-</div>
+            <li className="sidebar-menu-group-title">Support</li>
+            <li><a href="https://www.google.com" target="_blank" rel="noreferrer"><Icon icon="solar:notes-outline" className="menu-icon" /><span>Ticket System</span></a></li>
+          </ul>
+        </div>
       </aside>
 
-      <main className={sidebarActive ? "dashboard-main active" : "dashboard-main"}>
-        <div className='navbar-header'>
-          <div className='row align-items-center justify-content-between'>
-            <div className='col-auto'>
-              <div className='d-flex flex-wrap align-items-center gap-4'>
-                <button type='button' className='sidebar-toggle' onClick={sidebarControl}>
-                  <Icon icon={sidebarActive ? 'iconoir:arrow-right' : 'heroicons:bars-3-solid'} className='icon text-2xl non-active' />
+      {/* ========== MAIN ========== */}
+      <main className={`dashboard-main ${sidebarActive ? "active" : ""}`}>
+        <div className="navbar-header">
+          <div className="row align-items-center justify-content-between">
+            <div className="col-auto">
+              <div className="d-flex align-items-center gap-3">
+                <button type="button" className="sidebar-toggle" onClick={() => setSidebarActive(!sidebarActive)}>
+                  <Icon icon="heroicons:bars-3-solid" />
                 </button>
-                <button onClick={mobileMenuControl} type='button' className='sidebar-mobile-toggle'>
-                  <Icon icon='heroicons:bars-3-solid' className='icon' />
-                </button>
+                
+                {sidebarActive && (
+                  <Link to="/" className="d-none d-lg-flex align-items-center ms-1">
+                    <img src="/assets/images/logo-icon.png" alt="mini logo" style={{ height: '32px' }} />
+                  </Link>
+                )}
               </div>
             </div>
-            
-            <div className='col-auto'>
-              <div className='d-flex flex-wrap align-items-center gap-3'>
+
+            <div className="col-auto">
+              <div className="d-flex align-items-center gap-3">
                 <ThemeToggleButton />
-                
-                {/* UPDATED PROFILE DROPDOWN */}
-                <div className='dropdown'>
-                  <button className='d-flex justify-content-center align-items-center rounded-circle' type='button' data-bs-toggle='dropdown'>
-                    <img
-                      src={user?.picture || 'assets/images/user.png'}
-                      alt='user'
-                      className='w-40-px h-40-px object-fit-cover rounded-circle border'
-                    />
-                  </button>
-                  <div className='dropdown-menu to-top dropdown-menu-sm'>
-                    <div className='py-12 px-16 radius-8 bg-primary-50 mb-16 d-flex align-items-center justify-content-between gap-2'>
-                      <div>
-                        <h6 className='text-lg text-primary-light fw-semibold mb-0'>{user?.name || 'User'}</h6>
-                        <span className='text-secondary-light fw-medium text-sm text-capitalize'>{user?.role || 'Guest'}</span>
+                <div className="dropdown">
+                  <button data-bs-toggle="dropdown" className="border-0 bg-transparent p-0">
+                    {/* UPDATED LOGIC: If no error and picture exists, show image. Otherwise show Initial Circle. */}
+                    {user?.picture && !imgError ? (
+                      <img 
+                        src={user.picture} 
+                        alt="user" 
+                        className="w-40-px h-40-px rounded-circle object-fit-cover"
+                        onError={() => setImgError(true)} 
+                      />
+                    ) : (
+                      <div className="w-40-px h-40-px rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold text-lg">
+                        {getInitial()}
                       </div>
+                    )}
+                  </button>
+                  <div className="dropdown-menu dropdown-menu-end shadow-sm">
+                    <div className="px-16 py-8 border-bottom">
+                      <h6 className="text-sm mb-0">{user?.name || "User"}</h6>
                     </div>
-                    <ul className='to-top-list'>
-                      <li>
-                        <Link className='dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3' to='/view-profile'>
-                          <Icon icon='solar:user-linear' className='icon text-xl' /> My Profile
-                        </Link>
-                      </li>
-                      <li>
-                        <button 
-                          className='dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-danger d-flex align-items-center gap-3 w-100 border-0 bg-transparent' 
-                          onClick={handleLogout}
-                        >
-                          <Icon icon='lucide:power' className='icon text-xl' /> Log Out
-                        </button>
-                      </li>
-                    </ul>
+                    <button className="dropdown-item text-danger d-flex align-items-center gap-2 py-8" onClick={handleLogout}>
+                      <Icon icon="lucide:power" /> Logout
+                    </button>
                   </div>
                 </div>
               </div>
@@ -222,15 +108,9 @@ const MasterLayout = ({ children }) => {
           </div>
         </div>
 
-        <div className='dashboard-main-body'>{children}</div>
-
-        <footer className='d-footer'>
-          <div className='row align-items-center justify-content-between'>
-            <div className='col-auto'>
-              <p className='mb-0'>© 2026 Qiu AI GmbH. All Rights Reserved.</p>
-            </div>
-          </div>
-        </footer>
+        <div className="dashboard-main-body">
+          {children}
+        </div>
       </main>
     </section>
   );

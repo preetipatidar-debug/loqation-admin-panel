@@ -1,80 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import React, { useEffect, useState } from "react";
+import api from "../services/api";
+import PageHeader from "../components/common/PageHeader";
 import { Icon } from '@iconify/react';
-import Breadcrumb from '../components/Breadcrumb';
 
 const OverviewPage = () => {
   const [stats, setStats] = useState({
     totalTopLocations: 0,
     totalMainLocations: 0,
     totalSubLocations: 0,
-    totalGooglePlaces: 0,
     totalUsers: 0,
   });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get('/dashboard/stats');
-        if (res.data) {
-          // Since keys match exactly, we can just spread res.data
-          setStats(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to load dashboard stats', err);
+        const res = await api.get("/dashboard/stats");
+        setStats(res.data);
+      } catch (error) {
+        console.error("Failed to load dashboard stats", error);
       }
     };
     fetchStats();
   }, []);
 
   const cardData = [
-    {
-      title: 'Top Locations',
-      value: stats.totalTopLocations,
-      icon: 'solar:map-point-bold-duotone',
-      color: 'primary',
-    },
-    {
-      title: 'Main Locations',
-      value: stats.totalMainLocations,
-      icon: 'solar:buildings-bold-duotone',
-      color: 'info',
-    },
-    {
-      title: 'Sub Locations',
-      value: stats.totalSubLocations,
-      icon: 'solar:building-bold-duotone',
-      color: 'success',
-    },
-    {
-      title: 'Google Places',
-      value: stats.totalGooglePlaces,
-      icon: 'solar:google-play-bold-duotone',
-      color: 'warning',
-    },
-    {
-      title: 'Users',
-      value: stats.totalUsers,
-      icon: 'solar:user-bold-duotone',
-      color: 'danger',
-    },
+    { title: 'Total Top Locations', value: stats.totalTopLocations, icon: 'solar:map-point-bold', color: 'primary', trend: '+2' },
+    { title: 'Total Main Locations', value: stats.totalMainLocations, icon: 'solar:buildings-bold', color: 'success', trend: '+15' },
+    { title: 'Total Sub Locations', value: stats.totalSubLocations, icon: 'solar:shop-bold', color: 'info', trend: '+1' },
+    { title: 'Total Users', value: stats.totalUsers, icon: 'solar:user-bold', color: 'warning', trend: '+0' },
   ];
 
   return (
     <>
-      <Breadcrumb title="Dashboard" subtitle="Overview" />
+      <PageHeader title="Dashboard" subtitle="AI" />
 
-      <div className="row g-4">
+      <div className="row gy-4">
         {cardData.map((card, i) => (
-          <div className="col-md-6 col-xl-4" key={i}>
-            <div className={`card radius-12 border-0 shadow-sm bg-${card.color}-50`}>
+          <div className="col-xxl-3 col-sm-6" key={i}>
+            <div className="card radius-12 border-0 shadow-none bg-base h-100">
               <div className="card-body p-24">
                 <div className="d-flex align-items-center justify-content-between">
                   <div>
-                    <p className={`text-${card.color}-600 fw-bold mb-4`}>{card.title}</p>
-                    <h2 className="mb-0 fw-bold">{card.value}</h2>
+                    <span className="text-secondary-light fw-medium mb-12 d-block">{card.title}</span>
+                    <h4 className="mb-4 fw-bold">{card.value}</h4>
+                    <p className="mb-0 text-sm">
+                      <span className="text-success-main fw-semibold">{card.trend}</span>
+                      <span className="text-secondary-light ms-1">Last 30 days</span>
+                    </p>
                   </div>
-                  <Icon icon={card.icon} className={`text-${card.color}-600`} style={{ fontSize: '48px' }} />
+                  <div className={`w-56-px h-56-px bg-${card.color}-100 text-${card.color}-600 rounded-circle d-flex align-items-center justify-content-center`}>
+                    <Icon icon={card.icon} width="32" />
+                  </div>
                 </div>
               </div>
             </div>

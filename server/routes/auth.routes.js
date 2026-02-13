@@ -1,40 +1,95 @@
 const express = require('express');
-const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('../db');
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const JWT_SECRET = process.env.JWT_SECRET || 'wowdash_secret_key_2026';
 
 router.post('/google-signin', async (req, res) => {
   try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: 'Missing credential' });
+    }
+
+    // 1. Verify Google token
     const ticket = await client.verifyIdToken({
-      idToken: req.body.credential,
-      audience: process.env.GOOGLE_CLIENT_ID
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
-    const [rows] = await db.execute(
-      'SELECT * FROM users WHERE email = ?',
-      [payload.email]
+    const {
+      sub: googleId,
+      email,
+      name,
+      picture,
+    } = payload;
+
+    // 2. Find user by email
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE email = ? LIMIT 1',
+      [email]
     );
 
-    if (!rows.length) {
-      return res.status(403).json({ success: false, message: 'Unauthorized user' });
+    if (users.length === 0) {
+      // ❌ user must already exist
+      return res.status(401).json({
+        message: 'User not registered',
+      });
     }
 
-    const user = {
-      id: rows[0].id,
-      email: payload.email,
-      name: payload.name,
-      role: rows[0].role
-    };
+    const user = users[0];
 
-    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ success: true, token, user });
-  } catch {
-    res.status(401).json({ success: false, message: 'Verification failed' });
+    // 3. First-time Google login → update google_id & picture
+    if (!user.google_id) {
+      await db.query(
+        `
+        UPDATE users
+        SET google_id = ?, picture = ?, last_login = NOW()
+        WHERE id = ?
+        `,
+        [googleId, picture, user.id]
+      );
+    } else {
+      // Normal login → just update last_login
+      await db.query(
+        `
+        UPDATE users
+        SET last_login = NOW()
+        WHERE id = ?
+        `,
+        [user.id]
+      );
+    }
+
+    // 4. Issue JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // 5. Return UPDATED user payload
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: name || user.name,
+        email: user.email,
+        role: user.role,
+        picture: picture || user.picture,
+      },
+    });
+
+  } catch (err) {
+    console.error('Google Sign-in Error:', err);
+    res.status(500).json({ message: 'Authentication failed' });
   }
 });
 

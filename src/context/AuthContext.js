@@ -23,7 +23,6 @@ export const AuthProvider = ({ children }) => {
             
             // Sync Axios headers immediately
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            
             setUser(userData);
             return true;
         } catch (err) {

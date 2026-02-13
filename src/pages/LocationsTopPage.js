@@ -9,6 +9,7 @@ import {
 } from "@react-google-maps/api";
 import { useGoogleMaps } from "../hook/useGoogleMaps";
 import DrawTools from "../components/DrawTools";
+import PageHeader from "../components/common/PageHeader"; // Integrated PageHeader
 
 /* ================= CONSTANTS ================= */
 const MAP_CONTAINER_STYLE = { width: "100%", height: "520px" };
@@ -105,13 +106,12 @@ const LocationsTopPage = () => {
   return (
     <>
       {/* ================= HEADER ================= */}
-      <div className="d-flex justify-content-between align-items-center mb-24">
-        <div>
-          <h5 className="fw-bold mb-4">Top Locations - List View</h5>
-          <p className="text-secondary mb-0">
-            Manage top-level geographical areas
-          </p>
-        </div>
+      <div className="d-flex justify-content-between align-items-center mb-24 flex-wrap gap-3">
+        {/* Replaced hardcoded div with dynamic PageHeader */}
+        <PageHeader 
+          title="Top Locations" 
+          subtitle="Manage top-level geographical areas" 
+        />
 
         <button
           className="btn btn-primary-600 d-flex align-items-center gap-2"
@@ -226,7 +226,6 @@ const LocationsTopPage = () => {
               </div>
 
               <div className="modal-body row g-4">
-                {/* LEFT FORM */}
                 <div className="col-lg-4">
                   <input
                     className="form-control mb-3"
@@ -256,7 +255,6 @@ const LocationsTopPage = () => {
                   />
                 </div>
 
-                {/* MAP */}
                 <div className="col-lg-8">
                   {isLoaded && (
                     <>
